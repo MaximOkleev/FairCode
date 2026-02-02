@@ -1,10 +1,11 @@
 package com.team.antiplagiat.models.user.service
 
 import com.team.antiplagiat.models.user.User
+import org.springframework.stereotype.Service
 import com.team.antiplagiat.service.ServiceCRUD
 import org.springframework.stereotype.Component
 
-@Component
+@Service
 class UserCRUD : ServiceCRUD<User> {
 
     override val entities: MutableMap<Long, User> = mutableMapOf()
