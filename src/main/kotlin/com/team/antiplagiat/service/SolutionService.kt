@@ -1,7 +1,9 @@
 package com.team.antiplagiat.service
 
 import com.team.antiplagiat.models.Solution
+import org.springframework.stereotype.Service
 
+@Service
 class SolutionService(
     private val properties: AntiPlagiatProperties
 ) : ServiceCRUD<Solution> {
