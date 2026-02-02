@@ -1,3 +1,10 @@
 spring:
   application:
     name: antiplagiat
+
+antiplagiat:
+  max-attempts-per-task: 50
+  
+app:
+  contest:
+    max-duration-hours: 5
