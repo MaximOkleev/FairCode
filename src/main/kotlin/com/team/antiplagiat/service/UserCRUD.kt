@@ -2,6 +2,7 @@ package com.team.antiplagiat.models.user.service
 
 import com.team.antiplagiat.models.user.User
 import org.springframework.stereotype.Service
+import com.team.antiplagiat.service.ServiceCRUD
 
 @Service
 class UserCRUD : ServiceCRUD<User> {
