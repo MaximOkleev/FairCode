@@ -13,8 +13,4 @@ data class ProblemServiceConfig(
     // Список запрещенных слов в названиях задач
     // Значение загружается из application.yaml: problem-service.forbidden-names
     var forbiddenNames: List<String> = emptyList(),
-
-    // Автоматически генерировать тестовые задачи при старте приложения
-    // Значение загружается из application.yaml: problem-service.auto-generate-problems
-    var autoGenerateProblems: Boolean = false
 )

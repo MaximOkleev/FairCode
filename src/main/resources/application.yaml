@@ -1,10 +1,3 @@
 spring:
   application:
     name: antiplagiat
-
-problem-service:
-  max-problems: 5
-  forbidden-names:
-    - "тест"
-    - "пример"
-    - "временный"
