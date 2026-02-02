@@ -13,7 +13,5 @@ interface ServiceCRUD<T : Entity> {
 
     fun read(id : Long) = entities[id]
 
-    fun update() : Boolean
-
     fun delete(id: Long) = entities.remove(id) != null
 }
