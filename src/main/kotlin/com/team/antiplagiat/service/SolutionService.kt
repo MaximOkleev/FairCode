@@ -1,66 +1,49 @@
 package com.team.antiplagiat.service
 
-import com.team.antiplagiat.models.Entity
 import com.team.antiplagiat.models.Solution
 
 class SolutionService(
     private val properties: AntiPlagiatProperties
-) {
-    private val entities = mutableMapOf<Long, Entity>()
+) : ServiceCRUD<Solution> {
+
+    override val entities = mutableMapOf<Long, Solution>()
+
     private val attemptsCounter = mutableMapOf<Pair<Long, Long>, Int>()
 
-    fun create(entity: Entity): Boolean {
-        println("Попытка создать сущность: $entity")
+    override fun create(entity: Solution): Boolean {
+        println("Попытка создать посылку: $entity")
 
-        if (entity is Solution) {
-            val key = entity.userId to entity.taskId
-            val attempts = attemptsCounter.getOrDefault(key, 0)
+        val key = entity.userId to entity.taskId
+        val attempts = attemptsCounter.getOrDefault(key, 0)
 
-            if (attempts >= properties.maxAttempts) {
-                println(
-                    "Превышено кол-во попыток ${properties.maxAttempts} для userId ${entity.userId}, taskId ${entity.taskId}"
-                )
-                return false
-            }
-
-            entities[entity.id] = entity
-            attemptsCounter[key] = attempts + 1
+        if (attempts >= properties.maxAttempts) {
             println(
-                "Сущность создана. id ${entity.id}, попытка ${attemptsCounter[key]}/${properties.maxAttempts}"
+                "Превышено кол-во попыток ${properties.maxAttempts} для userId ${entity.userId}, taskId ${entity.taskId}"
             )
-            return true
+            return false
         }
 
-        entities[entity.id] = entity
-        println("Сущность создана (generic). id ${entity.id}")
-        return true
+        val created = super.create(entity)
+        if (created) {
+            attemptsCounter[key] = attempts + 1
+            println(
+                "Посылка создана. id ${entity.id}, попытка ${attemptsCounter[key]}/${properties.maxAttempts}"
+            )
+        } else {
+            println("Посылка с id ${entity.id} уже существует")
+        }
+
+        return created
     }
 
-    fun read(id: Long): Entity? {
-        val entity = entities[id]
-        println("Чтение сущности id $id → $entity")
-        return entity
-    }
-
-    fun update(id: Long, updated: Entity): Boolean {
+    fun update(id: Long, updated: Solution): Boolean {
         if (!entities.containsKey(id)) {
-            println("Обновление невозможно, т.к. сущность id $id не найдена")
+            println("Обновление невозможно, т.к. посылка id $id не найдена")
             return false
         }
 
         entities[id] = updated
-        println("Сущность обновлена, id $id")
-        return true
-    }
-
-    fun delete(id: Long): Boolean {
-        val removed = entities.remove(id)
-        if (removed == null) {
-            println("Сущность $id не найдена, невозможно удалить")
-            return false
-        }
-
-        println("Сущность $id удалена")
+        println("Посылка обновлена, id $id")
         return true
     }
 }
