@@ -1,3 +1,8 @@
 spring:
   application:
     name: antiplagiat
+
+app:
+  contest:
+    max-duration-hours: 5
+    enabled: true
