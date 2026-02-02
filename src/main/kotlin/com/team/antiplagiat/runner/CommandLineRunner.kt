@@ -6,15 +6,17 @@ import com.team.antiplagiat.service.ContestCRUD
 import com.team.antiplagiat.service.ProblemCrudService
 import org.springframework.boot.CommandLineRunner
 import com.team.antiplagiat.models.Contest
+import com.team.antiplagiat.models.Solution
+import com.team.antiplagiat.service.SolutionService
 import java.time.LocalDateTime
-import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Component
 
 @Component
 class CommandLineRunner(
     private val problemService: ProblemCrudService,
     private val userService: UserCRUD,
-    private val contestService: ContestCRUD
+    private val contestService: ContestCRUD,
+    private val solutionService: SolutionService
 ) : CommandLineRunner {
 
     override fun run(vararg args: String?) {
@@ -94,7 +96,7 @@ class CommandLineRunner(
         contestService.create(contest1)
         contestService.create(contest2)
         contestService.create(contest3)
-        println("\n2. СОЗДАНИЕ ЕЩЕ КОНТЕСТОВ ДЛЯ ПОИСКА ПО АДМИНИСТРАТОРУ:")
+        println("\n2. СОЗДАНИЕ КОНТЕСТОВ ДЛЯ ПОИСКА ПО АДМИНУ:")
         val contest4 = Contest(4, "Контест админа 100", 100, LocalDateTime.now().plusDays(2), 4 * 3600)
         val contest5 = Contest(5, "Контест админа 300", 300, LocalDateTime.now().plusDays(1), 2 * 3600)
         contestService.create(contest4)
@@ -102,34 +104,61 @@ class CommandLineRunner(
         println("\n3. ЧТЕНИЕ КОНТЕСТА ПО ID:")
         val foundContest = contestService.read(1)
         println("Найден контест: ${foundContest?.name} (длительность: ${foundContest?.duration?.div(3600)} часов)")
-        println("\n4. ВСЕ КОНТЕСТЫ:")
-        val allContests = contestService.entities.values
-        println("Всего контестов: ${allContests.size}")
-        allContests.forEach { contest ->
-            println("  ID: ${contest.id}, Название: '${contest.name}', Админ: ${contest.adminId}")
-        }
-        println("\n5. ОБНОВЛЕНИЕ КОНТЕСТА:")
+        println("\n4. ОБНОВЛЕНИЕ КОНТЕСТА:")
         contestService.update(1, "ПЕ", 4 * 3600)
         val updatedContest = contestService.read(1)
         println("Обновленный контест: '${updatedContest?.name}', ${updatedContest?.duration?.div(3600)} часов")
-        println("\n6. ПОИСК КОНТЕСТОВ ПО АДМИНИСТРАТОРУ:")
+        println("\n5. ПОИСК КОНТЕСТОВ ПО АДМИНУ:")
         val admin100Contests = contestService.getByAdmin(100)
         if (admin100Contests != null) {
-            println("Контесты администратора 100:")
+            println("Контесты админа 100:")
             admin100Contests.forEach { contest ->
                 println("  • '${contest.name}' (${contest.duration / 3600} часов)")
             }
         }
         val admin300Contests = contestService.getByAdmin(300)
         if (admin300Contests != null) {
-            println("Контесты администратора 300:")
+            println("Контесты админа 300:")
             admin300Contests.forEach { contest ->
                 println("  • '${contest.name}'")
             }
         }
-        println("\n7. УДАЛЕНИЕ КОНТЕСТА:")
+        println("\n6. УДАЛЕНИЕ КОНТЕСТА:")
         contestService.delete(4)
-        
-        
+
+        println("\n" + "=".repeat(70))
+        println("ДЕМОНСТРАЦИЯ ЗАВЕРШЕНА")
+        println("=".repeat(70))
+
+        println("\nЧАСТЬ 4: ДЕМОНСТРАЦИЯ SolutionCRUD")
+        println("-".repeat(30))
+        val solution = Solution(10, 2, 1, "C++", "waiting", LocalDateTime.now())
+        println("\n1. СОЗДАНИЕ ПОСЫЛОКИ:")
+        solutionService.create(solution)
+        println("\n2. ЛОВИМ ОГРАНИЧЕНИЕ:")
+        for (i in 1..51) {
+            val solution = Solution(i.toLong(), 2, 1, "C++", "waiting", LocalDateTime.now())
+            val res = solutionService.create(solution)
+            println("Попытка $i: ${if (res) "УСПЕШНО" else "ОТКЛОНЕНО (превышен лимит)"}")
+        }
+        println("\n3. ЧТЕНИЕ ПОСЫЛОК:")
+        val res = solutionService.read(1)
+        println("  ID: ${res?.id}, Пользователь: ${res?.userId}, Задача: ${res?.taskId}")
+        println("\n4. ОБНОВЛЕНИЕ ПОСЫЛКИ:")
+        val updatedSolution = Solution(
+            1,
+            1,
+            1,
+            "Python",
+            "waitng",
+            LocalDateTime.now(),
+        )
+        solutionService.update(1, updatedSolution)
+        println("\n5. УДАЛЕНИЕ ПОСЫЛОК:")
+        solutionService.delete(1)
+        solutionService.delete(2)
+        println("\n" + "=".repeat(70))
+        println("ДЕМОНСТРАЦИЯ ЗАВЕРШЕНА")
+        println("=".repeat(70))
     }
 }
