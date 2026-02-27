@@ -10,5 +10,6 @@ COPY build/libs/antiplagiat-0.0.1-SNAPSHOT.jar /app/app.jar
 # Порт (если это веб-приложение - можно изменить)
 EXPOSE 8080
 
+
 # Команда запуска
 ENTRYPOINT ["java", "-jar", "app.jar"]

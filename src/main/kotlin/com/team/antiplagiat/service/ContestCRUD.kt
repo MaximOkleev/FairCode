@@ -1,7 +1,7 @@
 package com.team.antiplagiat.service
 import com.team.antiplagiat.models.Contest
 import org.springframework.stereotype.Service
-import com.team.antiplagiat.config.ContestConfig
+import com.team.antiplagiat.ContestConfig
 
 @Service
 class ContestCRUD(private val config: ContestConfig): ServiceCRUD<Contest> {
