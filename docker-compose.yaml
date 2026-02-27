@@ -2,7 +2,8 @@ version: "3.9"
 
 services:
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
+    container_name: antiplagiat-db
     environment:
       POSTGRES_DB: testdb
       POSTGRES_USER: user
@@ -11,11 +12,26 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-  qwerty:
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user -d testdb" ]  # Исправлено
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
     build: .
+    container_name: antiplagiat-app
     ports:
       - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/testdb
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: pass
+      MAX_ATTEMPTS: 100
+      MAX_DURATION_HOURS: 8
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
