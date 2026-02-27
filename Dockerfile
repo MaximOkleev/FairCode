@@ -1,15 +1,31 @@
-# Используем легковесный образ с Java
-FROM eclipse-temurin:17-jdk-jammy
+# ----------Stage 1: build ----------
+#используем официальный образ с Gradle и JDK 17
+FROM gradle:8.5-jdk17 AS builder
 
-# Рабочая директория внутри контейнера
+#рабочая директория
 WORKDIR /app
 
-# Копируем jar в контейнер
-COPY build/libs/antiplagiat-0.0.1-SNAPSHOT.jar /app/app.jar
+#копируем все исходники
+COPY . .
 
-# Порт (если это веб-приложение - можно изменить)
+#собираем приложение (исключаем тесты для ускорения)
+RUN ./gradlew bootJar -x test
+
+# ---------- Stage 2: runtime ----------
+#лёгкий образ с JRE 17 (alpine — минимальный размер)
+FROM eclipse-temurin:17-jre-alpine
+
+#создаём непривилегированного пользователя
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+WORKDIR /app
+
+#копируем собранный jar из builder stage
+COPY --from=builder /app/build/libs/*.jar app.jar
+
+#открываем порт приложения
 EXPOSE 8080
 
-
-# Команда запуска
+#запускаем
 ENTRYPOINT ["java", "-jar", "app.jar"]
