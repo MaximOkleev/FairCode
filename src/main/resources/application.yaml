@@ -13,8 +13,8 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 antiplagiat:
-  max-attempts-per-task: ${MAX_ATTEMPTS:50}
+  max-attempts-per-task: ${maxAttempts:50}
 
 app:
   contest:
-    max-duration-hours: ${MAX_DURATION_HOURS:5}
+    max-duration-hours: ${maxDurationHours:5}
