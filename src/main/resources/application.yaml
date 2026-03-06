@@ -11,6 +11,9 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  sql:
+    init:
+      mode: always
 
 antiplagiat:
   max-attempts-per-task: ${maxAttempts:50}
