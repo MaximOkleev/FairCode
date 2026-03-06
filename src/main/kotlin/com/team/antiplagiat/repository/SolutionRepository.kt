@@ -11,29 +11,47 @@ class SolutionRepository(private val jdbc: JdbcTemplate) {
 
     private val rowMapper = RowMapper<Solution> { rs, _ ->
         Solution(
-            id       = rs.getLong("id"),
-            userId   = rs.getLong("admin_id"),
-            taskId   = rs.getLong("id"),
-            language = "C++",
-            filePath = rs.getString("code"),
-            date     = LocalDateTime.now()
+            id = rs.getLong("id"),
+            userId = rs.getLong("user_id"),
+            taskId = rs.getLong("task_id"),
+            language = rs.getString("lanquage"),
+            filePath = rs.getString("file_path"),
+            date = rs.getTimestamp("date")?.toLocalDateTime() ?: LocalDateTime.now()
         )
     }
 
-    // Добавить решение (id = текущее количество решений)
-    fun add(author: String, code: String): Boolean {
-        val newId = count()
-        return jdbc.update(
-            "INSERT INTO solutions (id, author, code) VALUES (?, ?, ?)",
-            newId, author, code
-        ) > 0
+    fun add(solution: Solution): Boolean {
+        val rows = jdbc.update(
+            """
+        INSERT INTO solutions (user_id, task_id, language, file_path, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """.trimIndent(),
+            solution.userId,
+            solution.taskId,
+            solution.language,
+            solution.filePath,
+            solution.date ?: LocalDateTime.now()
+        )
+        return rows > 0
     }
 
-    // Получить общее количество решений
     fun count(): Int =
-        jdbc.queryForObject("SELECT COUNT(*) FROM solutions", Int::class.java) ?: 0
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM solutions",
+            Int::class.java
+        ) ?: 0
 
-    // Получить решение по ID
     fun findById(id: Long): Solution? =
-        jdbc.query("SELECT * FROM solutions WHERE id = ?", rowMapper, id).firstOrNull()
+        jdbc.query(
+            "SELECT * FROM solutions WHERE id = ?",
+            rowMapper,
+            id
+        ).firstOrNull()
+
+    fun findAll(): List<Solution> =
+        jdbc.query(
+            "SELECT * FROM solutions ORDER BY created_at DESC",
+            rowMapper
+        )
+
 }
