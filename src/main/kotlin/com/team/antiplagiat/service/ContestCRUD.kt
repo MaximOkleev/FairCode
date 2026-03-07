@@ -3,14 +3,9 @@ package com.team.antiplagiat.service
 import com.team.antiplagiat.models.Contest
 import org.springframework.stereotype.Service
 import com.team.antiplagiat.ContestConfig
-import io.github.oshai.kotlinlogging.KotlinLogging
 
 @Service
-class ContestCRUD(private val config: ContestConfig) : ServiceCRUD<Contest> {
-
-    private val logger = KotlinLogging.logger {}
-
-    override val entities: MutableMap<Long, Contest> = mutableMapOf()
+class ContestCRUD(private val config: ContestConfig) : BaseServiceCRUD<Contest>() {
 
     override fun create(entity: Contest): Boolean {
         logger.info { "Попытка создать контест: id=${entity.id}, name='${entity.name}'" }

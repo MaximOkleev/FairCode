@@ -3,24 +3,18 @@ package com.team.antiplagiat.service
 import com.team.antiplagiat.models.Problem
 import org.springframework.stereotype.Service
 import java.util.concurrent.atomic.AtomicLong
-import io.github.oshai.kotlinlogging.KotlinLogging
 
 @Service
-class ProblemCrudService : ServiceCRUD<Problem> {
+class ProblemCrudService : BaseServiceCRUD<Problem>() {
 
-    private val logger = KotlinLogging.logger {}
-    override val entities: MutableMap<Long, Problem> = mutableMapOf()
     private val idCounter = AtomicLong(1)
 
-    // CREATE - создать новую задачу
     fun createProblem(name: String, description: String? = null): Boolean {
         logger.info { "Попытка создать задачу: '$name'" }
 
-        // Генерируем ID
         val id = idCounter.getAndIncrement()
         val problem = Problem(id, name, description)
 
-        // Используем базовую реализацию из ServiceCRUD
         val result = create(problem)
 
         if (result) {
@@ -32,13 +26,11 @@ class ProblemCrudService : ServiceCRUD<Problem> {
         return result
     }
 
-    // READ - получить все задачи
     fun getAllProblems(): List<Problem> {
         logger.info { "Получение всех задач. Всего: ${entities.size}" }
         return entities.values.toList()
     }
 
-    // UPDATE - обновить задачу
     fun updateProblem(id: Long, name: String?, description: String? = null): Boolean {
         logger.info { "Попытка обновить задачу ID=$id" }
 
@@ -49,7 +41,6 @@ class ProblemCrudService : ServiceCRUD<Problem> {
             description = description ?: problem.description
         )
 
-        // Удаляем старую и добавляем обновленную
         entities.remove(id)
         entities[id] = updatedProblem
 
@@ -57,7 +48,6 @@ class ProblemCrudService : ServiceCRUD<Problem> {
         return true
     }
 
-    // DELETE - удалить задачу
     override fun delete(id: Long): Boolean {
         logger.info { "Попытка удалить задачу ID=$id" }
 
@@ -73,6 +63,5 @@ class ProblemCrudService : ServiceCRUD<Problem> {
         return result
     }
 
-    // Получить количество задач
     fun getProblemCount(): Int = entities.size
 }

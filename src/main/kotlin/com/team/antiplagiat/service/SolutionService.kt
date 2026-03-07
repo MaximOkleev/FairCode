@@ -2,16 +2,11 @@ package com.team.antiplagiat.service
 
 import com.team.antiplagiat.models.Solution
 import org.springframework.stereotype.Service
-import io.github.oshai.kotlinlogging.KotlinLogging
 
 @Service
 class SolutionService(
     private val properties: AntiPlagiatProperties
-) : ServiceCRUD<Solution> {
-
-    private val logger = KotlinLogging.logger {}
-
-    override val entities = mutableMapOf<Long, Solution>()
+) : BaseServiceCRUD<Solution>() {
 
     private val attemptsCounter = mutableMapOf<Pair<Long, Long>, Int>()
 
@@ -38,6 +33,7 @@ class SolutionService(
     }
 
     fun update(id: Long, updated: Solution): Boolean {
+        logger.info { "Обновление посылки id=$id" }
         if (!entities.containsKey(id)) {
             logger.warn { "Обновление невозможно, т.к. посылка id $id не найдена" }
             return false
