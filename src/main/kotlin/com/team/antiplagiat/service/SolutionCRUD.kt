@@ -1,11 +1,12 @@
 package com.team.antiplagiat.service
 
+import com.team.antiplagiat.SolutionConfig
 import com.team.antiplagiat.models.Solution
 import org.springframework.stereotype.Service
 
 @Service
 class SolutionCRUD(
-    private val properties: AntiPlagiatProperties
+    private val properties: SolutionConfig
 ) : BaseServiceCRUD<Solution>() {
 
     private val attemptsCounter = mutableMapOf<Pair<Long, Long>, Int>()
