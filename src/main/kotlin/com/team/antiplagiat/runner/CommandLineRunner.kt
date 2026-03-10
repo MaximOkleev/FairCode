@@ -7,7 +7,7 @@ import com.team.antiplagiat.service.ProblemCrudService
 import org.springframework.boot.CommandLineRunner
 import com.team.antiplagiat.models.Contest
 import com.team.antiplagiat.models.Solution
-import com.team.antiplagiat.service.SolutionService
+import com.team.antiplagiat.service.SolutionCRUD
 import java.time.LocalDateTime
 import org.springframework.stereotype.Component
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -17,7 +17,7 @@ class CommandLineRunner(
     private val problemService: ProblemCrudService,
     private val userService: UserCRUD,
     private val contestService: ContestCRUD,
-    private val solutionService: SolutionService
+    private val solutionCRUD: SolutionCRUD
 ) : CommandLineRunner {
 
     private val logger = KotlinLogging.logger {}
@@ -137,17 +137,17 @@ class CommandLineRunner(
         val solution = Solution(10, 2, 1, "C++", "waiting", LocalDateTime.now())
 
         logger.info { "\n1. СОЗДАНИЕ ПОСЫЛОКИ:" }
-        solutionService.create(solution)
+        solutionCRUD.create(solution)
 
         logger.info { "\n2. ЛОВИМ ОГРАНИЧЕНИЕ:" }
         for (i in 1..51) {
             val solution = Solution(i.toLong(), 2, 1, "C++", "waiting", LocalDateTime.now())
-            val res = solutionService.create(solution)
+            val res = solutionCRUD.create(solution)
             logger.info { "Попытка $i: ${if (res) "УСПЕШНО" else "ОТКЛОНЕНО (превышен лимит)"}" }
         }
 
         logger.info { "\n3. ЧТЕНИЕ ПОСЫЛОК:" }
-        val res = solutionService.read(1)
+        val res = solutionCRUD.read(1)
         logger.info { "  ID: ${res?.id}, Пользователь: ${res?.userId}, Задача: ${res?.taskId}" }
 
         logger.info { "\n4. ОБНОВЛЕНИЕ ПОСЫЛКИ:" }
@@ -159,11 +159,11 @@ class CommandLineRunner(
             "waitng",
             LocalDateTime.now(),
         )
-        solutionService.update(1, updatedSolution)
+        solutionCRUD.update(1, updatedSolution)
 
         logger.info { "\n5. УДАЛЕНИЕ ПОСЫЛОК:" }
-        solutionService.delete(1)
-        solutionService.delete(2)
+        solutionCRUD.delete(1)
+        solutionCRUD.delete(2)
 
         logger.info { "\n" + "=".repeat(70) }
         logger.info { "ДЕМОНСТРАЦИЯ ЗАВЕРШЕНА" }
