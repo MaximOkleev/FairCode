@@ -14,25 +14,27 @@ class SolutionRepository(private val jdbc: JdbcTemplate) {
             id = rs.getLong("id"),
             userId = rs.getLong("user_id"),
             taskId = rs.getLong("task_id"),
-            language = rs.getString("lanquage"),
+            language = rs.getString("language"),
             filePath = rs.getString("file_path"),
-            date = rs.getTimestamp("date")?.toLocalDateTime() ?: LocalDateTime.now()
+            date = rs.getTimestamp("created_at")?.toLocalDateTime() ?: LocalDateTime.now()
         )
     }
 
-    fun add(solution: Solution): Boolean {
-        val rows = jdbc.update(
+    fun add(solution: Solution): Long {
+        val solutionId = jdbc.queryForObject(
             """
         INSERT INTO solutions (user_id, task_id, language, file_path, created_at)
         VALUES (?, ?, ?, ?, ?)
+        RETURNING id
         """.trimIndent(),
+            Long::class.java,
             solution.userId,
             solution.taskId,
             solution.language,
             solution.filePath,
-            solution.date ?: LocalDateTime.now()
+            solution.date
         )
-        return rows > 0
+        return solutionId ?: 0
     }
 
     fun count(): Int =

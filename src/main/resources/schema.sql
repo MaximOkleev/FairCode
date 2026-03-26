@@ -4,5 +4,5 @@ CREATE TABLE solutions (
     task_id BIGINT NOT NULL,
     language VARCHAR(50),
     file_path TEXT,
-    date TIMESTAMP
+    created_at TIMESTAMP
 );
