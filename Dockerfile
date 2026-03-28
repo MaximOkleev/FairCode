@@ -13,7 +13,7 @@ RUN ./gradlew bootJar -x test
 
 # ---------- Stage 2: runtime ----------
 #лёгкий образ с JRE 17 (alpine — минимальный размер)
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre-alpine-3.23
 
 #создаём непривилегированного пользователя
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup

@@ -1,4 +1,4 @@
-CREATE TABLE solutions (
+CREATE TABLE if not exists solutions  (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
     task_id BIGINT NOT NULL,
