@@ -1,8 +1,38 @@
-CREATE TABLE if not exists solutions  (
+CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    task_id BIGINT NOT NULL,
-    language VARCHAR(50),
-    file_path TEXT,
-    created_at TIMESTAMP
+    login VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'basic'))
+);
+
+CREATE TABLE IF NOT EXISTS contests (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    admin_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    started_at TIMESTAMP NOT NULL,
+    duration INT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS problems (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    description TEXT
+);
+
+CREATE TABLE IF NOT EXISTS contest_problems (
+    contest_id BIGINT NOT NULL REFERENCES contests(id) ON DELETE CASCADE,
+    problem_id BIGINT NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
+    PRIMARY KEY (contest_id, problem_id)
+);
+
+CREATE TABLE IF NOT EXISTS solutions (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    problem_id BIGINT NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
+    language VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    submitted_at TIMESTAMP NOT NULL,
+    file_path TEXT NOT NULL,
+    code TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

@@ -1,12 +1,9 @@
-package com.team.antiplagiat
+package com.team.antiplagiat.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.stereotype.Component
+import kotlin.properties.Delegates
 
-@Component
 @ConfigurationProperties(prefix = "app.contest")
 class ContestConfig {
-    var maxDurationHours: Long = 5
-
-
+    var maxDurationHours by Delegates.notNull<Int>()
 }
