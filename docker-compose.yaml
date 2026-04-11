@@ -1,5 +1,3 @@
-version: "3.9"  # Версия синтаксиса Docker Compose
-
 services:  # Раздел с описанием сервисов (контейнеров)
 
   postgres:  # Сервис базы данных PostgreSQL
@@ -7,9 +5,9 @@ services:  # Раздел с описанием сервисов (контейн
     container_name: antiplagiat-db  # Явное имя контейнера (удобно для логов и exec)
 
     environment:  # Переменные окружения для инициализации БД
-      POSTGRES_DB: testdb          # Имя базы данных, создаваемой при первом запуске
-      POSTGRES_USER: user          # Пользователь базы данных
-      POSTGRES_PASSWORD: pass      # Пароль пользователя
+      POSTGRES_DB: antiplagiat          # Имя базы данных, создаваемой при первом запуске
+      POSTGRES_USER: postgres           # Пользователь базы данных
+      POSTGRES_PASSWORD: postgres       # Пароль пользователя
 
     ports:
       - "5432:5432"  # Проброс порта: <порт_хоста>:<порт_контейнера>
@@ -23,7 +21,7 @@ services:  # Раздел с описанием сервисов (контейн
       # Обеспечивает сохранность данных при перезапуске контейнера
 
     healthcheck:  # Проверка готовности сервиса
-      test: [ "CMD-SHELL", "pg_isready -U user -d testdb" ]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d antiplagiat" ]
       # Команда проверки:
       # pg_isready — утилита PostgreSQL
       # Проверяет, принимает ли сервер подключения
@@ -42,17 +40,17 @@ services:  # Раздел с описанием сервисов (контейн
       # Приложение будет доступно по http://localhost:8080
 
     environment:  # Переменные окружения для Spring Boot
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/testdb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/antiplagiat
       # JDBC URL подключения к БД
       # Важно: используется имя сервиса "postgres" как hostname
       # Docker Compose создаёт внутреннюю сеть,
       # и сервисы могут обращаться друг к другу по имени
 
-      SPRING_DATASOURCE_USERNAME: user   # Пользователь БД
-      SPRING_DATASOURCE_PASSWORD: pass   # Пароль БД
+      SPRING_DATASOURCE_USERNAME: postgres   # Пользователь БД
+      SPRING_DATASOURCE_PASSWORD: postgres   # Пароль БД
 
-      MAX_ATTEMPTS: 100           # Пользовательская переменная (используется в приложении)
-      MAX_DURATION_HOURS: 8       # Пользовательская переменная (используется в приложении)
+      maxAttempts: 100           # Пользовательская переменная (используется в приложении как maxAttemptsPerTask)
+      maxDurationHours: 8       # Пользовательская переменная (используется в приложении как maxDurationHours)
 
     depends_on:
       postgres:

@@ -2,22 +2,20 @@ spring:
   application:
     name: antiplagiat
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/testdb}
-    username: ${SPRING_DATASOURCE_USERNAME:user}
-    password: ${SPRING_DATASOURCE_PASSWORD:pass}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/antiplagiat}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
   jpa:
     hibernate:
       ddl-auto: update
+    show-sql: true
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-  sql:
-    init:
-      mode: always
 
 antiplagiat:
-  max-attempts-per-task: ${maxAttempts:50}
+  max-attempts: 50
 
 app:
   contest:
-    max-duration-hours: ${maxDurationHours:5}
+    max-duration-hours: 5
