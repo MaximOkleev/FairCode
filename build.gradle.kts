@@ -11,7 +11,7 @@ description = "Antiplagiat Project"
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
+		languageVersion = JavaLanguageVersion.of(21)
 	}
 }
 
@@ -27,8 +27,8 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    implementation("io.github.oshai:kotlin-logging-jvm:7.0.3")
-	implementation("org.springframework.boot:spring-boot-starter-jdbc")
+	implementation("io.github.oshai:kotlin-logging-jvm:7.0.3")
+	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	runtimeOnly("org.postgresql:postgresql")
 }
 
