@@ -7,6 +7,7 @@ import com.team.antiplagiat.repository.ProblemRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import io.github.oshai.kotlinlogging.KotlinLogging
+import com.team.antiplagiat.config.props.SolutionConfig
 import java.time.LocalDateTime
 
 @Service
@@ -15,7 +16,7 @@ class SolutionService(
     private val solutionRepository: SolutionRepository,
     private val userRepository: UserRepository,
     private val problemRepository: ProblemRepository,
-    private val properties: AntiPlagiatProperties
+    private val properties: SolutionConfig
 ) {
 
     private val logger = KotlinLogging.logger {}
