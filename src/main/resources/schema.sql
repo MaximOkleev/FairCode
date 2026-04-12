@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     login VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'basic'))
+    role VARCHAR(20) NOT NULL CHECK (role IN ('ADMIN', 'BASIC'))
 );
 
 CREATE TABLE IF NOT EXISTS contests (

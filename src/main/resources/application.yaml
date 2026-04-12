@@ -13,9 +13,8 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
-antiplagiat:
-  max-attempts: 50
-
 app:
+  solution:
+    max-attempts: 50
   contest:
     max-duration-hours: 5

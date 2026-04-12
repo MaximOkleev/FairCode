@@ -14,7 +14,7 @@ class Contest(
 
     @ManyToOne
     @JoinColumn(name = "admin_id", nullable = false)
-    var admin: User = User(),
+    var admin: User,
 
     @Column(name = "started_at", nullable = false)
     var startedAt: LocalDateTime = LocalDateTime.now(),

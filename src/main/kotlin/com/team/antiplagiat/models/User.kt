@@ -16,9 +16,9 @@ class User(
     var id: Long = 0,
 
     @Column(nullable = false, unique = true)
-    var login: String = "",
+    var login: String,
     @Column(nullable = false, unique = true)
-    var email: String = "",
+    var email: String,
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
