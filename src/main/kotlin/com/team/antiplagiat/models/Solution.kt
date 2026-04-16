@@ -11,7 +11,7 @@ class Solution(
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
-    var user: User,
+    var user: User = User(),
 
     @ManyToOne
     @JoinColumn(name = "problem_id", nullable = false)
