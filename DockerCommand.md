@@ -1,7 +1,7 @@
 # Сборка и запуск
-
-## docker compose up
-
+```bash
+docker compose up
+```
 Описание:
 
 - Собирает образ приложения (если он ещё не собран)
@@ -15,42 +15,42 @@
 - Запускает контейнер app
 
 - Выводит логи в терминал
-
-## docker compose up -d
-
+```bash
+docker compose up -d
+```
 Флаг:
 
 - `-d` — запуск контейнеров в фоновом режиме (detached mode)
 
 Контейнеры продолжают работать после закрытия терминала.
-
-## docker compose up --build
-
+```bash
+docker compose up --build
+```
 Флаг:
 
 - `--build` — принудительно пересобрать образ перед запуском
 
 Используется при изменении кода или Dockerfile.
-
-## docker compose build
-
+```bash
+docker compose build
+```
 Описание:
 
 - Собирает образ приложения согласно Dockerfile
 
 - Не запускает контейнеры
-
-## docker compose build --no-cache
-
+```bash
+docker compose build --no-cache
+```
 Флаг:
 - `--no-cache` — игнорировать кэш Docker при сборке
 
 Полезно при проблемах со слоями или зависимостями.
 
 # Остановка и управление контейнерами
-
-## docker compose down
-
+```bash
+docker compose down
+```
 Описание:
 
 - Останавливает контейнеры
@@ -60,25 +60,25 @@
 - Удаляет сеть проекта
 
 - Не удаляет volumes
-
-## docker compose down -v
-
+```bash
+docker compose down -v
+```
 Флаг:
 
 - `-v` — удалить volumes
 
 Удаляет данные PostgreSQL.
-
-## docker compose stop
-
+```bash
+docker compose stop
+```
 Описание:
 
 - Останавливает контейнеры
 
 - Не удаляет контейнеры и сеть
-
-## docker compose start
-
+```bash
+docker compose start
+```
 Описание:
 
 - Запускает ранее остановленные контейнеры
@@ -86,47 +86,47 @@
 - Не выполняет пересборку
 
 # Просмотр состояния и логов
-
-## docker compose ps
-
+```bash
+docker compose ps
+```
 Описание:
 
 - Показывает статус контейнеров текущего проекта
-
-# docker ps
-
+```bash
+docker ps
+```
 Описание:
 
 - Показывает запущенные контейнеры
-
-## docker ps -a
-
+```bash
+docker ps -a
+```
 Флаг:
 
 - `-a` — показать все контейнеры, включая остановленные
-
-## docker compose logs app
-
+```bash
+docker compose logs app
+```
 Описание:
 
 - Показывает логи сервиса app
-
-## docker compose logs postgres
-
+```bash
+docker compose logs postgres
+```
 Описание:
 
 - Показывает логи сервиса postgres
-
-## docker compose logs -f app
-
+```bash
+docker compose logs -f app
+```
 Флаг:
 
 - `-f` — следить за логами в реальном времени
 
 # Работа с образами
-
-## docker images
-
+```bash
+docker images
+```
 Описание:
 
 - Показывает список локальных Docker-образов
@@ -138,9 +138,9 @@
 - Удаляет указанный образ
 
 # Очистка Docker
-
-## docker system prune
-
+```bash
+docker system prune
+```
 Описание:
 
 - Удаляет неиспользуемые контейнеры
@@ -148,23 +148,25 @@
 - Удаляет неиспользуемые сети
 
 - Не удаляет volumes и используемые образы
-
-## docker system prune -a
+```bash
+docker system prune -a
+```
 
 Флаг:
 
 - `-a` — удалить все неиспользуемые образы
-
-## docker system prune -a --volumes
+```bash
+docker system prune -a --volumes
+```
 
 Флаг:
 
 - `--volumes` — удалить неиспользуемые volumes
 
 # Работа внутри контейнеров
-
-## docker exec -it antiplagiat-app sh
-
+```bash
+docker exec -it antiplagiat-app sh
+```
 Описание:
 
 - Открывает интерактивную shell-сессию внутри контейнера приложения
@@ -174,9 +176,9 @@
 - `-i` — интерактивный режим
 
 - `-t` — выделить псевдо-TTY
-
-## docker exec -it antiplagiat-db sh
-
+```bash
+docker exec -it antiplagiat-db sh
+```
 Описание:
 
 - Открывает shell внутри контейнера базы данных
@@ -195,13 +197,13 @@ PostgreSQL доступен:
 
 - Database: testdb
 
-- Username: user
+- Username: postgres
 
-- Password: pass
+- Password: postgres
 
 # Типовой рабочий процесс
 ```bash
-docker compose down
+docker compose down -v
 docker compose build
 docker compose up -d
 docker compose logs -f app
