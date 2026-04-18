@@ -2,9 +2,9 @@ name: Kotlin CI
 
 on:
   push:
-    branches: [ main, cicd ]
+    branches: [ main, cicd, updates ]
   pull_request:
-    branches: [ main, cicd ]
+    branches: [ main, cicd, updates ]
 
 jobs:
   build:
