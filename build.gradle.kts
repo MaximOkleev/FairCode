@@ -33,8 +33,6 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
 	implementation("org.apache.commons:commons-lang3:3.18.0")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
-    testImplementation("org.mockito:mockito-core:5.11.0")
 }
 
 kotlin {
