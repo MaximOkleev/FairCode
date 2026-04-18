@@ -138,3 +138,54 @@
 //        assertTrue(service.create(s3))
 //    }
 //}
+
+
+import com.team.antiplagiat.config.props.SolutionConfig
+import com.team.antiplagiat.models.Solution
+import com.team.antiplagiat.repository.ProblemRepository
+import com.team.antiplagiat.repository.SolutionRepository
+import com.team.antiplagiat.repository.UserRepository
+import com.team.antiplagiat.service.SolutionService
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.*
+import org.mockito.Mockito.mock
+import org.mockito.kotlin.*
+import java.util.Optional
+
+class SolutionServiceTest {
+
+    private val solutionRepository: SolutionRepository = mock()
+    private val userRepository: UserRepository = mock()
+    private val problemRepository: ProblemRepository = mock()
+    private val properties: SolutionConfig = mock()
+
+    private val service = SolutionService(
+        solutionRepository,
+        userRepository,
+        problemRepository,
+        properties
+    )
+
+    @Test
+    fun `should return solution when found`() {
+        val solution = Solution(id = 1)
+
+        whenever(solutionRepository.findById(1))
+            .thenReturn(Optional.of(solution))
+
+        val result = service.findById(1)
+
+        assertNotNull(result)
+        assertEquals(1, result?.id)
+    }
+
+    @Test
+    fun `should return null when not found`() {
+        whenever(solutionRepository.findById(1))
+            .thenReturn(Optional.empty())
+
+        val result = service.findById(1)
+
+        assertNull(result)
+    }
+}
