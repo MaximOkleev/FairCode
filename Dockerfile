@@ -10,9 +10,9 @@ COPY . .
 
 #собираем приложение (исключаем тесты для ускорения)
 
-#RUN ./gradlew bootJar -x test
+RUN ./gradlew bootJar -x test
 
-RUN gradle bootJar -x test
+#RUN gradle bootJar -x test
 
 # ---------- Stage 2: runtime ----------
 #лёгкий образ с JRE 17 (alpine — минимальный размер)
