@@ -36,8 +36,8 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
 	implementation("org.apache.commons:commons-lang3:3.18.0")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
-    testImplementation("org.mockito:mockito-core:5.11.0")
+	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	implementation("io.micrometer:micrometer-registry-prometheus")
 }
 
 kotlin {
@@ -48,4 +48,23 @@ kotlin {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	jvmArgs("-XX:+EnableDynamicAgentLoading", "-Xshare:off")
+}
+
+tasks.jacocoTestReport {
+	dependsOn(tasks.test)
+	reports {
+		html.required.set(true)
+	}
+	classDirectories.setFrom(
+		files(classDirectories.files.map {
+			fileTree(it) {
+				exclude(
+					"**/models/**",     // JPA-сущности с дефолтными значениями
+					"**/config/**",     // конфиги Spring
+					"**/*Application*" // точка входа main()
+				)
+			}
+		})
+	)
 }

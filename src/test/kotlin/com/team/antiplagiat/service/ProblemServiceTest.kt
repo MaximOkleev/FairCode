@@ -2,47 +2,54 @@ package com.team.antiplagiat.service
 
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.repository.ProblemRepository
-import org.junit.jupiter.api.Assertions.*
+import io.mockk.every
+import io.mockk.just
+import io.mockk.verify
+import io.mockk.Runs
+import io.mockk.impl.annotations.InjectMockKs
+import io.mockk.impl.annotations.MockK
+import io.mockk.junit5.MockKExtension
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.InjectMocks
-import org.mockito.Mock
-import org.mockito.Mockito.*
-import org.mockito.junit.jupiter.MockitoExtension
 import java.util.Optional
 
-@ExtendWith(MockitoExtension::class)
+@ExtendWith(MockKExtension::class)
 class ProblemServiceTest {
 
-    @Mock
+    @MockK
     private lateinit var problemRepository: ProblemRepository
 
-    @InjectMocks
+    @InjectMockKs
     private lateinit var problemService: ProblemService
 
     private lateinit var problem: Problem
 
     @BeforeEach
     fun setUp() {
-        problem = Problem(id = 1L, name = "Сумма чисел", description = "Найти сумму двух чисел")
+        problem = Problem(
+            id = 1L,
+            name = "Sum of numbers",
+            description = "Find the sum of two numbers"
+        )
     }
 
-    // -------------------------
-    // CREATE
-    // -------------------------
-
     @Test
-    fun `when Problem created - then fields are set correctly`() {
-        val problem = Problem(id = 1L, name = "Тест", description = "Описание")
+    fun `problem fields are set correctly on creation`() {
+        val problem = Problem(id = 1L, name = "Test", description = "Description")
 
         assertEquals(1L, problem.id)
-        assertEquals("Тест", problem.name)
-        assertEquals("Описание", problem.description)
+        assertEquals("Test", problem.name)
+        assertEquals("Description", problem.description)
     }
 
     @Test
-    fun `when Problem created with default values - then description is null`() {
+    fun `problem has null description by default`() {
         val problem = Problem(id = 0L, name = "")
 
         assertNull(problem.description)
@@ -50,161 +57,155 @@ class ProblemServiceTest {
     }
 
     @Test
-    fun `when create called with name and description - then saves and returns problem`() {
-        `when`(problemRepository.save(any(Problem::class.java))).thenReturn(problem)
+    fun `create saves and returns problem with description`() {
+        every { problemRepository.save(any()) } returns problem
 
-        val result = problemService.create("Сумма чисел", "Найти сумму двух чисел")
+        val result = problemService.create("Sum of numbers", "Find the sum of two numbers")
 
-        assertEquals("Сумма чисел", result.name)
-        assertEquals("Найти сумму двух чисел", result.description)
-        verify(problemRepository, times(1)).save(any(Problem::class.java))
+        assertEquals("Sum of numbers", result.name)
+        assertEquals("Find the sum of two numbers", result.description)
+        verify(exactly = 1) {
+            problemRepository.save(match {
+                it.name == "Sum of numbers" &&
+                    it.description == "Find the sum of two numbers"
+            })
+        }
     }
 
     @Test
-    fun `when create called with null description - then saves problem without description`() {
-        val problemNoDesc = Problem(id = 2L, name = "Факториал", description = null)
-        `when`(problemRepository.save(any(Problem::class.java))).thenReturn(problemNoDesc)
+    fun `create saves problem with null description`() {
+        val problemWithoutDescription = Problem(id = 2L, name = "Factorial", description = null)
+        every { problemRepository.save(any()) } returns problemWithoutDescription
 
-        val result = problemService.create("Факториал", null)
+        val result = problemService.create("Factorial", null)
 
-        assertEquals("Факториал", result.name)
+        assertEquals("Factorial", result.name)
         assertNull(result.description)
+        verify(exactly = 1) {
+            problemRepository.save(match {
+                it.name == "Factorial" && it.description == null
+            })
+        }
     }
 
-    // -------------------------
-    // FIND BY ID
-    // -------------------------
-
     @Test
-    fun `when findById called with existing id - then returns problem`() {
-        `when`(problemRepository.findById(1L)).thenReturn(Optional.of(problem))
+    fun `findById returns problem for existing id`() {
+        every { problemRepository.findById(1L) } returns Optional.of(problem)
 
         val result = problemService.findById(1L)
 
         assertNotNull(result)
         assertEquals(1L, result?.id)
-        assertEquals("Сумма чисел", result?.name)
+        assertEquals("Sum of numbers", result?.name)
     }
 
     @Test
-    fun `when findById called with non-existing id - then returns null`() {
-        `when`(problemRepository.findById(99L)).thenReturn(Optional.empty())
+    fun `findById returns null for missing id`() {
+        every { problemRepository.findById(99L) } returns Optional.empty()
 
         val result = problemService.findById(99L)
 
         assertNull(result)
     }
 
-    // -------------------------
-    // FIND ALL
-    // -------------------------
-
     @Test
-    fun `when findAll called - then returns all problems`() {
+    fun `findAll returns all problems`() {
         val problems = listOf(
             problem,
-            Problem(id = 2L, name = "Факториал", description = null),
-            Problem(id = 3L, name = "Палиндром", description = "Проверить строку")
+            Problem(id = 2L, name = "Factorial", description = null),
+            Problem(id = 3L, name = "Palindrome", description = "Check the string")
         )
-        `when`(problemRepository.findAll()).thenReturn(problems)
+        every { problemRepository.findAll() } returns problems
 
         val result = problemService.findAll()
 
         assertEquals(3, result.size)
-        assertEquals("Сумма чисел", result[0].name)
-        assertEquals("Факториал", result[1].name)
+        assertEquals("Sum of numbers", result[0].name)
+        assertEquals("Factorial", result[1].name)
     }
 
     @Test
-    fun `when findAll called and no problems exist - then returns empty list`() {
-        `when`(problemRepository.findAll()).thenReturn(emptyList())
+    fun `findAll returns empty list when repository is empty`() {
+        every { problemRepository.findAll() } returns emptyList()
 
         val result = problemService.findAll()
 
         assertTrue(result.isEmpty())
     }
 
-    // -------------------------
-    // UPDATE
-    // -------------------------
-
     @Test
-    fun `when update called with existing id - then updates and returns problem`() {
-        val updated = Problem(id = 1L, name = "Новое название", description = "Новое описание")
-        `when`(problemRepository.findById(1L)).thenReturn(Optional.of(problem))
-        `when`(problemRepository.save(any(Problem::class.java))).thenReturn(updated)
+    fun `update changes existing problem and returns saved value`() {
+        val updated = Problem(id = 1L, name = "New title", description = "New description")
+        every { problemRepository.findById(1L) } returns Optional.of(problem)
+        every { problemRepository.save(any()) } returns updated
 
-        val result = problemService.update(1L, "Новое название", "Новое описание")
+        val result = problemService.update(1L, "New title", "New description")
 
         assertNotNull(result)
-        assertEquals("Новое название", result?.name)
-        assertEquals("Новое описание", result?.description)
+        assertEquals("New title", result?.name)
+        assertEquals("New description", result?.description)
     }
 
     @Test
-    fun `when update called with null description - then updates only name`() {
-        `when`(problemRepository.findById(1L)).thenReturn(Optional.of(problem))
-        `when`(problemRepository.save(any(Problem::class.java))).thenAnswer { it.arguments[0] }
+    fun `update changes only name when description is null`() {
+        every { problemRepository.findById(1L) } returns Optional.of(problem)
+        every { problemRepository.save(any()) } answers { firstArg() }
 
-        val result = problemService.update(1L, "Новое название", null)
+        val result = problemService.update(1L, "New title", null)
 
         assertNotNull(result)
-        assertEquals("Новое название", result?.name)
-        assertEquals("Найти сумму двух чисел", result?.description)
+        assertEquals("New title", result?.name)
+        assertEquals("Find the sum of two numbers", result?.description)
     }
 
     @Test
-    fun `when update called with non-existing id - then returns null without saving`() {
-        `when`(problemRepository.findById(99L)).thenReturn(Optional.empty())
+    fun `update returns null and does not save for missing problem`() {
+        every { problemRepository.findById(99L) } returns Optional.empty()
 
-        val result = problemService.update(99L, "Название", "Описание")
+        val result = problemService.update(99L, "Title", "Description")
 
         assertNull(result)
-        verify(problemRepository, never()).save(any(Problem::class.java))
+        verify(exactly = 0) { problemRepository.save(any()) }
     }
 
     @Test
-    fun `when update called with null name - then updates only description`() {
-        `when`(problemRepository.findById(1L)).thenReturn(Optional.of(problem))
-        `when`(problemRepository.save(any(Problem::class.java))).thenAnswer { it.arguments[0] }
+    fun `update changes only description when name is null`() {
+        every { problemRepository.findById(1L) } returns Optional.of(problem)
+        every { problemRepository.save(any()) } answers { firstArg() }
 
-        val result = problemService.update(1L, null, "Новое описание")
+        val result = problemService.update(1L, null, "New description")
 
         assertNotNull(result)
-        assertEquals("Сумма чисел", result?.name)
-        assertEquals("Новое описание", result?.description)
+        assertEquals("Sum of numbers", result?.name)
+        assertEquals("New description", result?.description)
     }
 
     @Test
-    fun `when update called with both null - then returns problem unchanged`() {
-        `when`(problemRepository.findById(1L)).thenReturn(Optional.of(problem))
-        `when`(problemRepository.save(any(Problem::class.java))).thenAnswer { it.arguments[0] }
+    fun `update keeps problem unchanged when both fields are null`() {
+        every { problemRepository.findById(1L) } returns Optional.of(problem)
+        every { problemRepository.save(any()) } answers { firstArg() }
 
         val result = problemService.update(1L, null, null)
 
         assertNotNull(result)
-        assertEquals("Сумма чисел", result?.name)
-        assertEquals("Найти сумму двух чисел", result?.description)
+        assertEquals("Sum of numbers", result?.name)
+        assertEquals("Find the sum of two numbers", result?.description)
     }
 
-    // -------------------------
-    // DELETE
-    // -------------------------
-
     @Test
-    fun `when delete called with existing id - then calls deleteById`() {
-        doNothing().`when`(problemRepository).deleteById(1L)
+    fun `delete calls repository for existing id`() {
+        every { problemRepository.deleteById(1L) } just Runs
 
         problemService.delete(1L)
 
-        verify(problemRepository, times(1)).deleteById(1L)
+        verify(exactly = 1) { problemRepository.deleteById(1L) }
     }
 
     @Test
-    fun `when delete called with non-existing id - then does not throw exception`() {
-        doNothing().`when`(problemRepository).deleteById(99L)
+    fun `delete does not throw for missing id`() {
+        every { problemRepository.deleteById(99L) } just Runs
 
         assertDoesNotThrow { problemService.delete(99L) }
-        verify(problemRepository, times(1)).deleteById(99L)
+        verify(exactly = 1) { problemRepository.deleteById(99L) }
     }
 }
