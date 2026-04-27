@@ -17,3 +17,8 @@ app:
     max-attempts: 50
   contest:
     max-duration-hours: 5
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "prometheus" # Открываем доступ именно для Прометея

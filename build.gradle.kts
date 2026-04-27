@@ -3,7 +3,7 @@ plugins {
 	kotlin("plugin.spring") version "2.3.0"
 	id("org.springframework.boot") version "3.5.10"
 	id("io.spring.dependency-management") version "1.1.7"
-    jacoco
+	jacoco
 }
 
 group = "com.team"
@@ -26,11 +26,11 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
-    testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.0")
+	testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
+	testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.0")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-    testImplementation("io.mockk:mockk:1.13.8")
-    testImplementation("org.assertj:assertj-core:3.27.7")
+	testImplementation("io.mockk:mockk:1.13.8")
+	testImplementation("org.assertj:assertj-core:3.27.7")
 	testImplementation("com.h2database:h2")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation("io.github.oshai:kotlin-logging-jvm:7.0.3")
@@ -38,6 +38,8 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
 	implementation("org.apache.commons:commons-lang3:3.18.0")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
+	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	implementation("io.micrometer:micrometer-registry-prometheus")
 }
 
 kotlin {
@@ -48,4 +50,23 @@ kotlin {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	jvmArgs("-XX:+EnableDynamicAgentLoading", "-Xshare:off")
+}
+
+tasks.jacocoTestReport {
+	dependsOn(tasks.test)
+	reports {
+		html.required.set(true)
+	}
+	classDirectories.setFrom(
+		files(classDirectories.files.map {
+			fileTree(it) {
+				exclude(
+					"**/models/**",     // JPA-сущности с дефолтными значениями
+					"**/config/**",     // конфиги Spring
+					"**/*Application*" // точка входа main()
+				)
+			}
+		})
+	)
 }
