@@ -64,7 +64,7 @@ class SolutionController(private val solutionService: SolutionService) {
     @GetMapping
     @Operation(
         summary = "Получить все решения",
-        description = "Возвращает список всех решений в системе с пагинацией"
+        description = "Возвращает список всех решений в системе"
     )
     @ApiResponse(responseCode = "200", description = "Список решений успешно получен")
     fun getAll(): List<SolutionResponse> =
