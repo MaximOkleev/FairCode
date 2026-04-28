@@ -140,6 +140,30 @@ class SolutionControllerTest {
     }
 
     @Test
+    fun `create should return RestExceptionHandler body when request validation fails`() {
+        val invalidPayload = mapOf(
+            "userId" to 1,
+            "problemId" to 2,
+            "language" to "",
+            "filePath" to "",
+            "code" to "print('x')"
+        )
+
+        mockMvc.perform(
+            post("/api/solutions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalidPayload))
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("Validation failed"))
+            .andExpect(jsonPath("$.path").value("/api/solutions"))
+            .andExpect(jsonPath("$.errors.language").exists())
+            .andExpect(jsonPath("$.errors.filePath").exists())
+    }
+
+    @Test
     fun `create should handle request with code null`() {
 
         val request = SolutionRequest(
