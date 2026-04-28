@@ -5,8 +5,10 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/antiplagiat}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
-    # Инициализация БД через schema.sql
-    initialization-mode: always
+  sql:
+    init:
+      # Инициализация БД через schema.sql
+      mode: always
   jpa:
     hibernate:
       # ВАЖНО: для Docker используется 'update' (auto-schema)
