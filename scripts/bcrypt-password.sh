@@ -48,5 +48,4 @@ echo "Или установите Kotlin:"
 echo "  - Windows: choco install kotlin"
 echo "  - macOS: brew install kotlin"
 echo "  - Linux: https://kotlinlang.org/docs/tutorials/command-line.html"
-EOF
 
