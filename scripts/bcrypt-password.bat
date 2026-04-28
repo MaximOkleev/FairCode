@@ -29,33 +29,62 @@ if %errorlevel% equ 0 (
 REM Спосбо 2: Через Java/Spring утилиту
 where java >nul 2>nul
 if %errorlevel% equ 0 (
-    echo Используем Java для генерации bcrypt хеша...
-    echo.
+    where javac >nul 2>nul
+    if %errorlevel% equ 0 (
+        echo Используем Java для генерации bcrypt хеша...
+        echo.
 
-    REM Создаем временный Java файл
-    set TEMP_FILE=%temp%\BcryptGenerator.java
+        REM Ищем зависимости Spring Security для компиляции и запуска
+        set "PROJECT_DIR=%~dp0.."
+        set "SPRING_SECURITY_CRYPTO_JAR="
+        set "SPRING_CORE_JAR="
 
-    (
-    echo import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-    echo public class BcryptGenerator {
-    echo     public static void main(String[] args) {
-    echo         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(10);
-    echo         String hash = encoder.encode("%PASSWORD%");
-    echo         System.out.println("Bcrypt hash: " + hash);
-    echo     }
-    echo }
-    ) > !TEMP_FILE!
+        for /r "!PROJECT_DIR!" %%F in (spring-security-crypto-*.jar) do (
+            if not defined SPRING_SECURITY_CRYPTO_JAR set "SPRING_SECURITY_CRYPTO_JAR=%%F"
+        )
 
-    echo Компилируем и запускаем...
-    javac !TEMP_FILE! 2>nul
+        for /r "!PROJECT_DIR!" %%F in (spring-core-*.jar) do (
+            if not defined SPRING_CORE_JAR set "SPRING_CORE_JAR=%%F"
+        )
 
-    if exist "%temp%\BcryptGenerator.class" (
-        java -cp "%temp%;build/libs/*" BcryptGenerator
-        del /q "%temp%\BcryptGenerator.class" >nul 2>&1
+        if defined SPRING_SECURITY_CRYPTO_JAR if defined SPRING_CORE_JAR (
+            set "JAVA_CP=%temp%;!SPRING_SECURITY_CRYPTO_JAR!;!SPRING_CORE_JAR!"
+
+            REM Создаем временный Java файл
+            set "TEMP_FILE=%temp%\BcryptGenerator.java"
+
+            (
+            echo import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+            echo public class BcryptGenerator {
+            echo     public static void main(String[] args) {
+            echo         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(10);
+            echo         String hash = encoder.encode("%PASSWORD%");
+            echo         System.out.println("Bcrypt hash: " + hash);
+            echo     }
+            echo }
+            ) > "!TEMP_FILE!"
+
+            echo Компилируем и запускаем...
+            javac -cp "!JAVA_CP!" "!TEMP_FILE!" 2>nul
+
+            if exist "%temp%\BcryptGenerator.class" (
+                java -cp "!JAVA_CP!" BcryptGenerator
+                if %errorlevel% equ 0 (
+                    del /q "%temp%\BcryptGenerator.class" >nul 2>&1
+                    del /q "!TEMP_FILE!" >nul 2>&1
+                    exit /b 0
+                )
+                del /q "%temp%\BcryptGenerator.class" >nul 2>&1
+            )
+
+            del /q "!TEMP_FILE!" >nul 2>&1
+            echo Не удалось скомпилировать или запустить Java-утилиту, пробуем следующий способ...
+            echo.
+        ) else (
+            echo Не найдены зависимости Spring Security ^(spring-security-crypto и spring-core^), пробуем следующий способ...
+            echo.
+        )
     )
-
-    del /q !TEMP_FILE! >nul 2>&1
-    exit /b 0
 )
 
 REM Способ 3: Использовать это для локального тестирования в Python (если установлен)
