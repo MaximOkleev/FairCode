@@ -1,5 +1,7 @@
 package com.team.antiplagiat.service
 
+import com.team.antiplagiat.exception.ResourceNotFoundException
+import com.team.antiplagiat.exception.TooManyAttemptsException
 import com.team.antiplagiat.models.Solution
 import com.team.antiplagiat.repository.SolutionRepository
 import com.team.antiplagiat.repository.UserRepository
@@ -10,8 +12,8 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import com.team.antiplagiat.config.props.SolutionConfig
 import java.time.LocalDateTime
 
+
 @Service
-@Transactional
 class SolutionService(
     private val solutionRepository: SolutionRepository,
     private val userRepository: UserRepository,
@@ -21,22 +23,20 @@ class SolutionService(
 
     private val logger = KotlinLogging.logger {}
 
-    fun create(userId: Long, problemId: Long, language: String, filePath: String, code: String?): Solution? {
+    @Transactional
+    fun create(userId: Long, problemId: Long, language: String, filePath: String, code: String?): Solution {
         logger.info { "Попытка создать решение: userId=$userId, problemId=$problemId" }
 
-        val user = userRepository.findById(userId).orElse(null) ?: run {
-            logger.warn { "Пользователь $userId не найден" }
-            return null
-        }
-        val problem = problemRepository.findById(problemId).orElse(null) ?: run {
-            logger.warn { "Задача $problemId не найдена" }
-            return null
-        }
+        val user = userRepository.findById(userId)
+            .orElseThrow { ResourceNotFoundException("Пользователь с id=$userId не найден") }
+
+        val problem = problemRepository.findById(problemId)
+            .orElseThrow { ResourceNotFoundException("Задача с id=$problemId не найдена") }
 
         val attempts = solutionRepository.countByUserAndProblem(user, problem)
         if (attempts >= properties.maxAttempts) {
             logger.warn { "Превышен лимит попыток ${properties.maxAttempts} для user=${user.id}, problem=${problem.id}" }
-            return null
+            throw TooManyAttemptsException("Превышен лимит попыток: ${properties.maxAttempts}")
         }
 
         val solution = Solution(
@@ -48,25 +48,37 @@ class SolutionService(
             filePath = filePath,
             code = code
         )
+
         return solutionRepository.save(solution).also {
             logger.info { "Решение создано: id=${it.id}" }
         }
     }
 
-    fun findById(id: Long): Solution? = solutionRepository.findById(id).orElse(null)
+    @Transactional(readOnly = true)
+    fun findById(id: Long): Solution {
+        return solutionRepository.findById(id)
+            .orElseThrow { ResourceNotFoundException("Решение с id=$id не найдено") }
+    }
 
+    @Transactional(readOnly = true)
     fun findAll(): List<Solution> = solutionRepository.findAll()
 
+    @Transactional(readOnly = true)
     fun findByUser(userId: Long): List<Solution> = solutionRepository.findAllByUserId(userId)
 
-    fun updateStatus(id: Long, status: String): Solution? {
-        val solution = findById(id) ?: return null
+    @Transactional
+    fun updateStatus(id: Long, status: String): Solution {
+        val solution = findById(id)
         solution.status = status
         return solutionRepository.save(solution)
     }
 
+    @Transactional
     fun delete(id: Long) {
         logger.info { "Удаление решения id=$id" }
+        if (!solutionRepository.existsById(id)) {
+            throw ResourceNotFoundException("Решение с id=$id не найдено")
+        }
         solutionRepository.deleteById(id)
     }
 }

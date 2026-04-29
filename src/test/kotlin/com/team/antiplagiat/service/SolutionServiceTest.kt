@@ -1,6 +1,8 @@
 package com.team.antiplagiat.service
 
 import com.team.antiplagiat.config.props.SolutionConfig
+import com.team.antiplagiat.exception.ResourceNotFoundException
+import com.team.antiplagiat.exception.TooManyAttemptsException
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.models.Solution
 import com.team.antiplagiat.models.User
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.time.LocalDateTime
 import java.util.*
 
@@ -46,7 +49,6 @@ class SolutionServiceTest {
 
     @Test
     fun `create should return solution when user and problem exist and attempts limit not exceeded`() {
-
         val userId = 1L
         val problemId = 2L
         val language = "Kotlin"
@@ -75,9 +77,8 @@ class SolutionServiceTest {
 
         val result = solutionService.create(userId, problemId, language, filePath, code)
 
-        assertNotNull(result)
-        assertEquals(100L, result?.id)
-        assertEquals("waiting", result?.status)
+        assertEquals(100L, result.id)
+        assertEquals("waiting", result.status)
 
         verify(exactly = 1) { userRepository.findById(userId) }
         verify(exactly = 1) { problemRepository.findById(problemId) }
@@ -86,15 +87,17 @@ class SolutionServiceTest {
     }
 
     @Test
-    fun `create should return null when user not found`() {
+    fun `create should throw ResourceNotFoundException when user not found`() {
         val userId = 999L
         val problemId = 2L
 
         every { userRepository.findById(userId) } returns Optional.empty()
 
-        val result = solutionService.create(userId, problemId, "Java", "/path", null)
+        val exception = assertThrows<ResourceNotFoundException> {
+            solutionService.create(userId, problemId, "Java", "/path", null)
+        }
 
-        assertNull(result)
+        assertEquals("Пользователь с id=$userId не найден", exception.message)
         verify(exactly = 1) { userRepository.findById(userId) }
         verify(exactly = 0) { problemRepository.findById(any()) }
         verify(exactly = 0) { solutionRepository.countByUserAndProblem(any(), any()) }
@@ -102,8 +105,7 @@ class SolutionServiceTest {
     }
 
     @Test
-    fun `create should return null when problem not found`() {
-
+    fun `create should throw ResourceNotFoundException when problem not found`() {
         val userId = 1L
         val problemId = 999L
         val user = User().apply { id = userId }
@@ -111,9 +113,11 @@ class SolutionServiceTest {
         every { userRepository.findById(userId) } returns Optional.of(user)
         every { problemRepository.findById(problemId) } returns Optional.empty()
 
-        val result = solutionService.create(userId, problemId, "Python", "/path", "code")
+        val exception = assertThrows<ResourceNotFoundException> {
+            solutionService.create(userId, problemId, "Python", "/path", "code")
+        }
 
-        assertNull(result)
+        assertEquals("Задача с id=$problemId не найдена", exception.message)
         verify(exactly = 1) { userRepository.findById(userId) }
         verify(exactly = 1) { problemRepository.findById(problemId) }
         verify(exactly = 0) { solutionRepository.countByUserAndProblem(any(), any()) }
@@ -121,8 +125,7 @@ class SolutionServiceTest {
     }
 
     @Test
-    fun `create should return null when max attempts exceeded`() {
-
+    fun `create should throw TooManyAttemptsException when max attempts exceeded`() {
         val userId = 1L
         val problemId = 2L
         val maxAttempts = 3
@@ -134,33 +137,42 @@ class SolutionServiceTest {
         every { solutionConfig.maxAttempts } returns maxAttempts
         every { solutionRepository.countByUserAndProblem(user, problem) } returns 3
 
+        val exception = assertThrows<TooManyAttemptsException> {
+            solutionService.create(userId, problemId, "C++", "/path", null)
+        }
 
-        val result = solutionService.create(userId, problemId, "C++", "/path", null)
-
-        assertNull(result)
+        assertEquals("Превышен лимит попыток: $maxAttempts", exception.message)
         verify(exactly = 1) { solutionRepository.countByUserAndProblem(user, problem) }
         verify(exactly = 0) { solutionRepository.save(any()) }
     }
 
     @Test
     fun `create should handle code as null`() {
-
         val userId = 1L
         val problemId = 2L
         val maxAttempts = 5
         val user = User().apply { id = userId }
         val problem = Problem().apply { id = problemId }
+        val savedSolution = Solution(
+            id = 100L,
+            user = user,
+            problem = problem,
+            language = "JavaScript",
+            status = "waiting",
+            submittedAt = LocalDateTime.now(),
+            filePath = "/path",
+            code = null
+        )
 
         every { userRepository.findById(userId) } returns Optional.of(user)
         every { problemRepository.findById(problemId) } returns Optional.of(problem)
         every { solutionConfig.maxAttempts } returns maxAttempts
         every { solutionRepository.countByUserAndProblem(user, problem) } returns 0
-        every { solutionRepository.save(any<Solution>()) } answers { firstArg() }
+        every { solutionRepository.save(any<Solution>()) } returns savedSolution
 
         val result = solutionService.create(userId, problemId, "JavaScript", "/path", null)
 
-        assertNotNull(result)
-        assertNull(result?.code)
+        assertNull(result.code)
         verify(exactly = 1) { solutionRepository.save(any()) }
     }
 
@@ -168,7 +180,6 @@ class SolutionServiceTest {
 
     @Test
     fun `findById should return solution when exists`() {
-
         val solutionId = 100L
         val expectedSolution = Solution().apply { id = solutionId }
 
@@ -176,21 +187,21 @@ class SolutionServiceTest {
 
         val result = solutionService.findById(solutionId)
 
-        assertNotNull(result)
-        assertEquals(solutionId, result?.id)
+        assertEquals(solutionId, result.id)
         verify(exactly = 1) { solutionRepository.findById(solutionId) }
     }
 
     @Test
-    fun `findById should return null when solution not found`() {
-
+    fun `findById should throw ResourceNotFoundException when solution not found`() {
         val solutionId = 999L
 
         every { solutionRepository.findById(solutionId) } returns Optional.empty()
 
-        val result = solutionService.findById(solutionId)
+        val exception = assertThrows<ResourceNotFoundException> {
+            solutionService.findById(solutionId)
+        }
 
-        assertNull(result)
+        assertEquals("Решение с id=$solutionId не найдено", exception.message)
         verify(exactly = 1) { solutionRepository.findById(solutionId) }
     }
 
@@ -198,7 +209,6 @@ class SolutionServiceTest {
 
     @Test
     fun `findAll should return list of solutions`() {
-
         val solutions = listOf(
             Solution().apply { id = 1 },
             Solution().apply { id = 2 },
@@ -216,7 +226,6 @@ class SolutionServiceTest {
 
     @Test
     fun `findAll should return empty list when no solutions`() {
-
         every { solutionRepository.findAll() } returns emptyList()
 
         val result = solutionService.findAll()
@@ -229,7 +238,6 @@ class SolutionServiceTest {
 
     @Test
     fun `findByUser should return solutions for specific user`() {
-
         val userId = 1L
         val expectedSolutions = listOf(
             Solution().apply { id = 100 },
@@ -247,7 +255,6 @@ class SolutionServiceTest {
 
     @Test
     fun `findByUser should return empty list when user has no solutions`() {
-
         val userId = 999L
 
         every { solutionRepository.findAllByUserId(userId) } returns emptyList()
@@ -262,7 +269,6 @@ class SolutionServiceTest {
 
     @Test
     fun `updateStatus should update status and return updated solution`() {
-
         val solutionId = 100L
         val newStatus = "completed"
         val existingSolution = Solution().apply {
@@ -279,30 +285,29 @@ class SolutionServiceTest {
 
         val result = solutionService.updateStatus(solutionId, newStatus)
 
-        assertNotNull(result)
-        assertEquals(newStatus, result?.status)
+        assertEquals(newStatus, result.status)
         verify(exactly = 1) { solutionRepository.findById(solutionId) }
         verify(exactly = 1) { solutionRepository.save(existingSolution) }
     }
 
     @Test
-    fun `updateStatus should return null when solution not found`() {
-
+    fun `updateStatus should throw ResourceNotFoundException when solution not found`() {
         val solutionId = 999L
         val newStatus = "completed"
 
         every { solutionRepository.findById(solutionId) } returns Optional.empty()
 
-        val result = solutionService.updateStatus(solutionId, newStatus)
+        val exception = assertThrows<ResourceNotFoundException> {
+            solutionService.updateStatus(solutionId, newStatus)
+        }
 
-        assertNull(result)
+        assertEquals("Решение с id=$solutionId не найдено", exception.message)
         verify(exactly = 1) { solutionRepository.findById(solutionId) }
         verify(exactly = 0) { solutionRepository.save(any()) }
     }
 
     @Test
     fun `updateStatus should handle any status value`() {
-
         val solutionId = 100L
         val statuses = listOf("waiting", "processing", "completed", "failed", "cancelled")
 
@@ -317,39 +322,45 @@ class SolutionServiceTest {
 
             val result = solutionService.updateStatus(solutionId, status)
 
-            assertNotNull(result)
+            assertEquals(status, result.status)
             clearMocks(solutionRepository)
         }
     }
 
-// дл delete
+// для delete
 
     @Test
-    fun `delete should call repository deleteById`() {
-
+    fun `delete should call repository deleteById when solution exists`() {
         val solutionId = 100L
+
+        every { solutionRepository.existsById(solutionId) } returns true
         every { solutionRepository.deleteById(solutionId) } just runs
 
         solutionService.delete(solutionId)
 
+        verify(exactly = 1) { solutionRepository.existsById(solutionId) }
         verify(exactly = 1) { solutionRepository.deleteById(solutionId) }
     }
 
     @Test
-    fun `delete should handle non-existent id without exception`() {
-
+    fun `delete should throw ResourceNotFoundException when solution not found`() {
         val solutionId = 999L
-        every { solutionRepository.deleteById(solutionId) } just runs
 
-        assertDoesNotThrow { solutionService.delete(solutionId) }
-        verify(exactly = 1) { solutionRepository.deleteById(solutionId) }
+        every { solutionRepository.existsById(solutionId) } returns false
+
+        val exception = assertThrows<ResourceNotFoundException> {
+            solutionService.delete(solutionId)
+        }
+
+        assertEquals("Решение с id=$solutionId не найдено", exception.message)
+        verify(exactly = 1) { solutionRepository.existsById(solutionId) }
+        verify(exactly = 0) { solutionRepository.deleteById(any()) }
     }
 
-// исключения всякие
+// дополнительные тесты для исключений
 
     @Test
-    fun `create should work when maxAttempts is exactly 0`() {
-
+    fun `create should throw TooManyAttemptsException when maxAttempts is 0`() {
         val userId = 1L
         val problemId = 2L
         val maxAttempts = 0
@@ -361,30 +372,32 @@ class SolutionServiceTest {
         every { solutionConfig.maxAttempts } returns maxAttempts
         every { solutionRepository.countByUserAndProblem(user, problem) } returns 0
 
-        val result = solutionService.create(userId, problemId, "Go", "/path", null)
+        val exception = assertThrows<TooManyAttemptsException> {
+            solutionService.create(userId, problemId, "Go", "/path", null)
+        }
 
-        assertNull(result)
+        assertEquals("Превышен лимит попыток: $maxAttempts", exception.message)
         verify(exactly = 1) { solutionRepository.countByUserAndProblem(user, problem) }
         verify(exactly = 0) { solutionRepository.save(any()) }
     }
 
     @Test
-    fun `create should handle very large attempt count`() {
-
+    fun `create should throw TooManyAttemptsException when attempt count equals maxAttempts`() {
         val userId = 1L
         val problemId = 2L
-        val maxAttempts = Int.MAX_VALUE.toLong()
+        val maxAttempts = 3
         val user = User().apply { id = userId }
         val problem = Problem().apply { id = problemId }
 
         every { userRepository.findById(userId) } returns Optional.of(user)
         every { problemRepository.findById(problemId) } returns Optional.of(problem)
-        every { solutionConfig.maxAttempts } returns maxAttempts.toInt()
-        every { solutionRepository.countByUserAndProblem(user, problem) } returns Long.MAX_VALUE
-        every { solutionRepository.save(any()) } returns mockk()
+        every { solutionConfig.maxAttempts } returns maxAttempts
+        every { solutionRepository.countByUserAndProblem(user, problem) } returns 3
 
-        val result = solutionService.create(userId, problemId, "Rust", "/path", null)
+        val exception = assertThrows<TooManyAttemptsException> {
+            solutionService.create(userId, problemId, "Rust", "/path", null)
+        }
 
-        assertNull(result)
+        assertEquals("Превышен лимит попыток: $maxAttempts", exception.message)
     }
 }
