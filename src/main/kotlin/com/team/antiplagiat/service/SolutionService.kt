@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import io.github.oshai.kotlinlogging.KotlinLogging
 import com.team.antiplagiat.config.props.SolutionConfig
+import com.team.antiplagiat.models.SolutionStatus
 import java.time.LocalDateTime
 
 
@@ -43,7 +44,7 @@ class SolutionService(
             user = user,
             problem = problem,
             language = language,
-            status = "waiting",
+            status = SolutionStatus.WAITING,
             submittedAt = LocalDateTime.now(),
             filePath = filePath,
             code = code
@@ -67,7 +68,7 @@ class SolutionService(
     fun findByUser(userId: Long): List<Solution> = solutionRepository.findAllByUserId(userId)
 
     @Transactional
-    fun updateStatus(id: Long, status: String): Solution {
+    fun updateStatus(id: Long, status: SolutionStatus): Solution {
         val solution = findById(id)
         solution.status = status
         return solutionRepository.save(solution)

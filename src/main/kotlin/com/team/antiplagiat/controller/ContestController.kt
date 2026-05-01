@@ -1,8 +1,8 @@
 package com.team.antiplagiat.controller
 
-import com.team.antiplagiat.controller.dto.ContestRequest
-import com.team.antiplagiat.controller.dto.ContestResponse
-import com.team.antiplagiat.controller.dto.toEntity
+import com.team.antiplagiat.controller.dto.contest.ContestRequest
+import com.team.antiplagiat.controller.dto.contest.ContestResponse
+import com.team.antiplagiat.controller.dto.contest.toEntity
 import com.team.antiplagiat.service.ContestService
 import com.team.antiplagiat.service.UserService
 import org.springframework.http.HttpStatus

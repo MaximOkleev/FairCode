@@ -1,19 +1,18 @@
-@file:Suppress("UNUSED", "USELESS_ELVIS", "SENSELESS_ELVIS")
-
 package com.team.antiplagiat.controller
 
-import com.team.antiplagiat.controller.dto.SolutionRequest
-import com.team.antiplagiat.controller.dto.SolutionResponse
+import com.team.antiplagiat.controller.dto.solution.SolutionRequest
+import com.team.antiplagiat.controller.dto.solution.SolutionResponse
+import com.team.antiplagiat.models.SolutionStatus
 import com.team.antiplagiat.service.SolutionService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import jakarta.validation.Valid
 
 @RestController
 @RequestMapping("/api/solutions")
@@ -42,7 +41,7 @@ class SolutionController(private val solutionService: SolutionService) {
             language = request.language,
             filePath = request.filePath,
             code = request.code
-        ) ?: return ResponseEntity.badRequest().build()
+        )
         return ResponseEntity.status(HttpStatus.CREATED).body(SolutionResponse.fromEntity(solution))
     }
 
@@ -110,7 +109,12 @@ class SolutionController(private val solutionService: SolutionService) {
         @Parameter(description = "Новый статус", example = "COMPLETED")
         @RequestParam status: String
     ): ResponseEntity<SolutionResponse> {
-        val updated = solutionService.updateStatus(id, status) ?: return ResponseEntity.notFound().build()
+        val solutionStatus = try {
+            SolutionStatus.valueOf(status.uppercase())
+        } catch (e: IllegalArgumentException) {
+            throw IllegalArgumentException("Неизвестный статус: $status")
+        }
+        val updated = solutionService.updateStatus(id, solutionStatus)
         return ResponseEntity.ok(SolutionResponse.fromEntity(updated))
     }
 
