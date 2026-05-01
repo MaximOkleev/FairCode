@@ -1,6 +1,6 @@
 package com.team.antiplagiat.controller
 
-import com.team.antiplagiat.controller.dto.ProblemRequest
+import com.team.antiplagiat.controller.dto.problem.ProblemRequest
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.service.ProblemService
 import io.mockk.Runs

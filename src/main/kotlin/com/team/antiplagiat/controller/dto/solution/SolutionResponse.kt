@@ -1,18 +1,8 @@
-package com.team.antiplagiat.controller.dto
+package com.team.antiplagiat.controller.dto.solution
 
 import com.team.antiplagiat.models.Solution
-import com.team.antiplagiat.models.User
-import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.models.SolutionStatus
 import java.time.LocalDateTime
-
-data class SolutionRequest(
-    val userId: Long,
-    val problemId: Long,
-    val language: String,
-    val filePath: String,
-    val code: String?
-)
 
 data class SolutionResponse(
     val id: Long,
@@ -38,12 +28,14 @@ data class SolutionResponse(
     }
 }
 
-fun SolutionRequest.toEntity(user: User, problem: Problem): Solution = Solution(
-    user = user,
-    problem = problem,
-    language = this.language,
-    status = SolutionStatus.WAITING,
-    submittedAt = LocalDateTime.now(),
-    filePath = this.filePath,
-    code = this.code
-)
+fun SolutionRequest.toEntity(user: com.team.antiplagiat.models.User, problem: com.team.antiplagiat.models.Problem) =
+    com.team.antiplagiat.models.Solution(
+        user = user,
+        problem = problem,
+        language = this.language,
+        status = SolutionStatus.WAITING,
+        submittedAt = LocalDateTime.now(),
+        filePath = this.filePath,
+        code = this.code
+    )
+

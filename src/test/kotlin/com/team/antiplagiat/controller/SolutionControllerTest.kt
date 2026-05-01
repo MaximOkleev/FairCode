@@ -1,7 +1,7 @@
 package com.team.antiplagiat.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.team.antiplagiat.controller.dto.SolutionRequest
+import com.team.antiplagiat.controller.dto.solution.SolutionRequest
 import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.exception.TooManyAttemptsException
 import com.team.antiplagiat.models.Problem

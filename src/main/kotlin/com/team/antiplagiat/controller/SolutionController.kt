@@ -1,7 +1,7 @@
 package com.team.antiplagiat.controller
 
-import com.team.antiplagiat.controller.dto.SolutionRequest
-import com.team.antiplagiat.controller.dto.SolutionResponse
+import com.team.antiplagiat.controller.dto.solution.SolutionRequest
+import com.team.antiplagiat.controller.dto.solution.SolutionResponse
 import com.team.antiplagiat.models.SolutionStatus
 import com.team.antiplagiat.service.SolutionService
 import org.springframework.http.HttpStatus
