@@ -58,10 +58,9 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception::class)
     fun handleGeneric(ex: Exception): ResponseEntity<ErrorResponse> {
-        ex.printStackTrace()
         return ResponseEntity
             .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(ErrorResponse("Внутренняя ошибка сервера: ${ex.message}"))
+            .body(ErrorResponse("Внутренняя ошибка сервера"))
     }
 }
 

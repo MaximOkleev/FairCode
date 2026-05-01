@@ -160,6 +160,42 @@ class SolutionControllerTest {
     }
 
     @Test
+    fun `create should handle request with code null`() {
+
+        val request = SolutionRequest(
+            userId = 1L,
+            problemId = 2L,
+            language = "Python",
+            filePath = "/path/to/solution.py",
+            code = null
+        )
+
+        val solution = createSolution(
+            id = 100L,
+            userId = 1L,
+            problemId = 2L,
+            language = "Python",
+            filePath = "/path/to/solution.py",
+            code = null
+        )
+
+
+        whenever(solutionService.create(eq(1L), eq(2L), eq("Python"), eq("/path/to/solution.py"), isNull()))
+            .thenReturn(solution)
+
+
+        mockMvc.perform(
+            post("/api/solutions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.code").doesNotExist())
+    }
+
+// для GET /api/solutions/{id}
+
+    @Test
     fun `getById should return 200 when solution exists`() {
         val solution = createSolution(
             id = 100L,

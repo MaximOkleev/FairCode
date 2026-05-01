@@ -77,9 +77,6 @@ class SolutionService(
     @Transactional
     fun delete(id: Long) {
         logger.info { "Удаление решения id=$id" }
-        if (!solutionRepository.existsById(id)) {
-            throw ResourceNotFoundException("Решение с id=$id не найдено")
-        }
         solutionRepository.deleteById(id)
     }
 }

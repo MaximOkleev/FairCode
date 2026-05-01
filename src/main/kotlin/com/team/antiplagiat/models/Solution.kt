@@ -30,5 +30,8 @@ class Solution(
     @Column(name = "file_path", nullable = false)
     var filePath: String = "",
 
-    var code: String? = null
+    var code: String? = null,
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    var createdAt: LocalDateTime = LocalDateTime.now()
 )

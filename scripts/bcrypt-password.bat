@@ -1,0 +1,111 @@
+@echo off
+REM bcrypt-password.bat - Windows утилита для генерации bcrypt хешей паролей
+
+if "%1"=="" (
+    echo Usage: bcrypt-password.bat ^<password^>
+    echo Example: bcrypt-password.bat my_secure_password123
+    exit /b 1
+)
+
+setlocal enabledelayedexpansion
+set PASSWORD=%1
+
+echo.
+echo Генерируем bcrypt хеш пароля...
+echo.
+
+REM Спосбо 1: Через PostgreSQL psql (если установлен)
+where psql >nul 2>nul
+if %errorlevel% equ 0 (
+    echo Используем PostgreSQL для генерации bcrypt хеша...
+    echo.
+    psql -U postgres -d antiplagiat -c "SELECT crypt('!PASSWORD!', gen_salt('bf', 10));"
+
+    if %errorlevel% equ 0 (
+        exit /b 0
+    )
+)
+
+REM Спосбо 2: Через Java/Spring утилиту
+where java >nul 2>nul
+if %errorlevel% equ 0 (
+    where javac >nul 2>nul
+    if %errorlevel% equ 0 (
+        echo Используем Java для генерации bcrypt хеша...
+        echo.
+
+        REM Ищем зависимости Spring Security для компиляции и запуска
+        set "PROJECT_DIR=%~dp0.."
+        set "SPRING_SECURITY_CRYPTO_JAR="
+        set "SPRING_CORE_JAR="
+
+        for /r "!PROJECT_DIR!" %%F in (spring-security-crypto-*.jar) do (
+            if not defined SPRING_SECURITY_CRYPTO_JAR set "SPRING_SECURITY_CRYPTO_JAR=%%F"
+        )
+
+        for /r "!PROJECT_DIR!" %%F in (spring-core-*.jar) do (
+            if not defined SPRING_CORE_JAR set "SPRING_CORE_JAR=%%F"
+        )
+
+        if defined SPRING_SECURITY_CRYPTO_JAR if defined SPRING_CORE_JAR (
+            set "JAVA_CP=%temp%;!SPRING_SECURITY_CRYPTO_JAR!;!SPRING_CORE_JAR!"
+
+            REM Создаем временный Java файл
+            set "TEMP_FILE=%temp%\BcryptGenerator.java"
+
+            (
+            echo import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+            echo public class BcryptGenerator {
+            echo     public static void main(String[] args) {
+            echo         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(10);
+            echo         String hash = encoder.encode("%PASSWORD%");
+            echo         System.out.println("Bcrypt hash: " + hash);
+            echo     }
+            echo }
+            ) > "!TEMP_FILE!"
+
+            echo Компилируем и запускаем...
+            javac -cp "!JAVA_CP!" "!TEMP_FILE!" 2>nul
+
+            if exist "%temp%\BcryptGenerator.class" (
+                java -cp "!JAVA_CP!" BcryptGenerator
+                if %errorlevel% equ 0 (
+                    del /q "%temp%\BcryptGenerator.class" >nul 2>&1
+                    del /q "!TEMP_FILE!" >nul 2>&1
+                    exit /b 0
+                )
+                del /q "%temp%\BcryptGenerator.class" >nul 2>&1
+            )
+
+            del /q "!TEMP_FILE!" >nul 2>&1
+            echo Не удалось скомпилировать или запустить Java-утилиту, пробуем следующий способ...
+            echo.
+        ) else (
+            echo Не найдены зависимости Spring Security ^(spring-security-crypto и spring-core^), пробуем следующий способ...
+            echo.
+        )
+    )
+)
+
+REM Способ 3: Использовать это для локального тестирования в Python (если установлен)
+where python >nul 2>nul
+if %errorlevel% equ 0 (
+    echo Используем Python для генерации bcrypt хеша...
+    echo.
+    python -c "import crypt; print('Bcrypt hash:', crypt.crypt('%PASSWORD%', crypt.METHOD_BLOWFISH))"
+    exit /b 0
+)
+
+echo.
+echo ^^! Требуется одно из:
+echo   1. PostgreSQL (psql.exe)
+echo   2. Java Development Kit (javac.exe)
+echo   3. Python (python.exe)
+echo   4. Git Bash или WSL с утилитами bash
+echo.
+echo Установите одно из указанных выше или используйте:
+echo   - Online: https://bcrypt-generator.com/ (ТОЛЬКО для тестирования!)
+echo   - PostgreSQL: SELECT crypt('password', gen_salt('bf', 10));
+echo.
+exit /b 1
+

@@ -195,7 +195,7 @@ PostgreSQL доступен:
 
 - Port: 5432
 
-- Database: testdb
+- Database: antiplagiat
 
 - Username: postgres
 

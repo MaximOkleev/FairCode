@@ -2,8 +2,8 @@ name: Kotlin CI
 
 on:
   push:
+    branches: [ main ]
   pull_request:
-    branches: [ main, cicd, updates ]
 
 jobs:
   build:

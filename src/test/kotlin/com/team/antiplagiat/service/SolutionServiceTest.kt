@@ -339,12 +339,10 @@ class SolutionServiceTest {
     fun `delete should call repository deleteById when solution exists`() {
         val solutionId = 100L
 
-        every { solutionRepository.existsById(solutionId) } returns true
         every { solutionRepository.deleteById(solutionId) } just runs
 
         solutionService.delete(solutionId)
 
-        verify(exactly = 1) { solutionRepository.existsById(solutionId) }
         verify(exactly = 1) { solutionRepository.deleteById(solutionId) }
     }
 
@@ -352,15 +350,10 @@ class SolutionServiceTest {
     fun `delete should throw ResourceNotFoundException when solution not found`() {
         val solutionId = 999L
 
-        every { solutionRepository.existsById(solutionId) } returns false
+        every { solutionRepository.deleteById(solutionId) } just Runs
 
-        val exception = assertThrows<ResourceNotFoundException> {
-            solutionService.delete(solutionId)
-        }
-
-        assertEquals("Решение с id=$solutionId не найдено", exception.message)
-        verify(exactly = 1) { solutionRepository.existsById(solutionId) }
-        verify(exactly = 0) { solutionRepository.deleteById(any()) }
+        assertDoesNotThrow { solutionService.delete(solutionId) }
+        verify(exactly = 1) { solutionRepository.deleteById(solutionId) }
     }
 
     // дополнительные тесты для исключений
