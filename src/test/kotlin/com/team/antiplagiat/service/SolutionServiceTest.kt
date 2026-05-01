@@ -5,6 +5,7 @@ import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.exception.TooManyAttemptsException
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.models.Solution
+import com.team.antiplagiat.models.SolutionStatus
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.repository.ProblemRepository
 import com.team.antiplagiat.repository.SolutionRepository
@@ -45,7 +46,7 @@ class SolutionServiceTest {
         clearAllMocks()
     }
 
-// для create
+    // для create
 
     @Test
     fun `create should return solution when user and problem exist and attempts limit not exceeded`() {
@@ -63,7 +64,7 @@ class SolutionServiceTest {
             user = user,
             problem = problem,
             language = language,
-            status = "waiting",
+            status = SolutionStatus.WAITING,
             submittedAt = LocalDateTime.now(),
             filePath = filePath,
             code = code
@@ -78,7 +79,7 @@ class SolutionServiceTest {
         val result = solutionService.create(userId, problemId, language, filePath, code)
 
         assertEquals(100L, result.id)
-        assertEquals("waiting", result.status)
+        assertEquals(SolutionStatus.WAITING, result.status)
 
         verify(exactly = 1) { userRepository.findById(userId) }
         verify(exactly = 1) { problemRepository.findById(problemId) }
@@ -158,7 +159,7 @@ class SolutionServiceTest {
             user = user,
             problem = problem,
             language = "JavaScript",
-            status = "waiting",
+            status = SolutionStatus.WAITING,
             submittedAt = LocalDateTime.now(),
             filePath = "/path",
             code = null
@@ -176,7 +177,7 @@ class SolutionServiceTest {
         verify(exactly = 1) { solutionRepository.save(any()) }
     }
 
-// для findById
+    // для findById
 
     @Test
     fun `findById should return solution when exists`() {
@@ -205,7 +206,7 @@ class SolutionServiceTest {
         verify(exactly = 1) { solutionRepository.findById(solutionId) }
     }
 
-// для findAll
+    // для findAll
 
     @Test
     fun `findAll should return list of solutions`() {
@@ -234,7 +235,7 @@ class SolutionServiceTest {
         verify(exactly = 1) { solutionRepository.findAll() }
     }
 
-// для findByUser
+    // для findByUser
 
     @Test
     fun `findByUser should return solutions for specific user`() {
@@ -265,15 +266,15 @@ class SolutionServiceTest {
         verify(exactly = 1) { solutionRepository.findAllByUserId(userId) }
     }
 
-// для updateStatus
+    // для updateStatus
 
     @Test
     fun `updateStatus should update status and return updated solution`() {
         val solutionId = 100L
-        val newStatus = "completed"
+        val newStatus = SolutionStatus.COMPLETED
         val existingSolution = Solution().apply {
             id = solutionId
-            status = "waiting"
+            status = SolutionStatus.WAITING
         }
         val updatedSolution = Solution().apply {
             id = solutionId
@@ -293,7 +294,7 @@ class SolutionServiceTest {
     @Test
     fun `updateStatus should throw ResourceNotFoundException when solution not found`() {
         val solutionId = 999L
-        val newStatus = "completed"
+        val newStatus = SolutionStatus.COMPLETED
 
         every { solutionRepository.findById(solutionId) } returns Optional.empty()
 
@@ -309,12 +310,17 @@ class SolutionServiceTest {
     @Test
     fun `updateStatus should handle any status value`() {
         val solutionId = 100L
-        val statuses = listOf("waiting", "processing", "completed", "failed", "cancelled")
+        val statuses = listOf(
+            SolutionStatus.WAITING,
+            SolutionStatus.PROCESSING,
+            SolutionStatus.COMPLETED,
+            SolutionStatus.FAILED
+        )
 
         statuses.forEach { status ->
             val solution = Solution().apply {
                 id = solutionId
-                this.status = "old"
+                this.status = SolutionStatus.WAITING
             }
 
             every { solutionRepository.findById(solutionId) } returns Optional.of(solution)
@@ -327,7 +333,7 @@ class SolutionServiceTest {
         }
     }
 
-// для delete
+    // для delete
 
     @Test
     fun `delete should call repository deleteById when solution exists`() {
@@ -357,7 +363,7 @@ class SolutionServiceTest {
         verify(exactly = 0) { solutionRepository.deleteById(any()) }
     }
 
-// дополнительные тесты для исключений
+    // дополнительные тесты для исключений
 
     @Test
     fun `create should throw TooManyAttemptsException when maxAttempts is 0`() {

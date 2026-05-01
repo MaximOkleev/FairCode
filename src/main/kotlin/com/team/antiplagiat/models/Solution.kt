@@ -20,8 +20,9 @@ class Solution(
     @Column(nullable = false)
     var language: String = "",
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    var status: String = "waiting",
+    var status: SolutionStatus = SolutionStatus.WAITING,
 
     @Column(name = "submitted_at", nullable = false)
     var submittedAt: LocalDateTime = LocalDateTime.now(),
@@ -29,8 +30,5 @@ class Solution(
     @Column(name = "file_path", nullable = false)
     var filePath: String = "",
 
-    var code: String? = null,
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    var createdAt: LocalDateTime = LocalDateTime.now()
+    var code: String? = null
 )

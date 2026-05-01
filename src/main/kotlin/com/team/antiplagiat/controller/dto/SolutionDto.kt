@@ -3,6 +3,7 @@ package com.team.antiplagiat.controller.dto
 import com.team.antiplagiat.models.Solution
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.models.Problem
+import com.team.antiplagiat.models.SolutionStatus
 import java.time.LocalDateTime
 
 data class SolutionRequest(
@@ -29,7 +30,7 @@ data class SolutionResponse(
             userId = solution.user.id,
             problemId = solution.problem.id,
             language = solution.language,
-            status = solution.status,
+            status = solution.status.name,
             submittedAt = solution.submittedAt,
             filePath = solution.filePath,
             code = solution.code
@@ -41,7 +42,7 @@ fun SolutionRequest.toEntity(user: User, problem: Problem): Solution = Solution(
     user = user,
     problem = problem,
     language = this.language,
-    status = "waiting",
+    status = SolutionStatus.WAITING,
     submittedAt = LocalDateTime.now(),
     filePath = this.filePath,
     code = this.code
