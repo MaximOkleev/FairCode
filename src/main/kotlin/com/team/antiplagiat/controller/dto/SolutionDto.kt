@@ -5,11 +5,22 @@ import com.team.antiplagiat.models.User
 import com.team.antiplagiat.models.Problem
 import java.time.LocalDateTime
 
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
+
 data class SolutionRequest(
+    @field:NotNull
     val userId: Long,
+
+    @field:NotNull
     val problemId: Long,
+
+    @field:NotBlank
     val language: String,
+
+    @field:NotBlank
     val filePath: String,
+
     val code: String?
 )
 

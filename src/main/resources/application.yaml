@@ -5,10 +5,17 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/antiplagiat}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+  sql:
+    init:
+      # Инициализация БД через schema.sql
+      mode: always
   jpa:
     hibernate:
+      # ВАЖНО: для Docker используется 'update' (auto-schema)
+      # для Production используйте 'validate' с Flyway/Liquibase
       ddl-auto: update
     show-sql: true
+    defer-datasource-initialization: true
 server:
   error:
     include-message: always
@@ -17,6 +24,16 @@ app:
     max-attempts: 50
   contest:
     max-duration-hours: 5
+  security:
+    # Включить Spring Security (default: false)
+    enabled: ${APP_SECURITY_ENABLED:false}
+    # Источник пользователей: "database" или "memory" (default: database)
+    user-provider: ${APP_SECURITY_USER_PROVIDER:database}
+    # In-memory конфигурация для development (когда user-provider=memory)
+    memory:
+      username: ${APP_SECURITY_MEMORY_USERNAME:admin}
+      password: ${APP_SECURITY_MEMORY_PASSWORD:admin}
+      roles: ${APP_SECURITY_MEMORY_ROLES:ADMIN}
 management:
   endpoints:
     web:

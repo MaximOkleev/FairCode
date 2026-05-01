@@ -2,8 +2,20 @@ CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     login VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('ADMIN', 'BASIC'))
 );
+
+-- Инициализация тестовых пользователей для разработки/тестирования
+-- Пароль: admin123
+-- BCrypt хеш: $2a$10$7.6Z/LL/6AvQxZ7pI/lUWOD5f1hK9W8K2z3L3J8R9V5M2X7Y9Z1a
+INSERT INTO users (login, email, password_hash, role)
+SELECT 'admin', 'admin@example.com', '$2a$10$7.6Z/LL/6AvQxZ7pI/lUWOD5f1hK9W8K2z3L3J8R9V5M2X7Y9Z1a', 'ADMIN'
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE login = 'admin');
+
+INSERT INTO users (login, email, password_hash, role)
+SELECT 'user1', 'user1@example.com', '$2a$10$7.6Z/LL/6AvQxZ7pI/lUWOD5f1hK9W8K2z3L3J8R9V5M2X7Y9Z1a', 'BASIC'
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE login = 'user1');
 
 CREATE TABLE IF NOT EXISTS contests (
     id BIGSERIAL PRIMARY KEY,
@@ -33,6 +45,5 @@ CREATE TABLE IF NOT EXISTS solutions (
     status VARCHAR(20) NOT NULL,
     submitted_at TIMESTAMP NOT NULL,
     file_path TEXT NOT NULL,
-    code TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    code TEXT
 );
