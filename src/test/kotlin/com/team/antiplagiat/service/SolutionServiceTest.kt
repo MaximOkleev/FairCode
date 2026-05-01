@@ -310,12 +310,7 @@ class SolutionServiceTest {
     @Test
     fun `updateStatus should handle any status value`() {
         val solutionId = 100L
-        val statuses = listOf(
-            SolutionStatus.WAITING,
-            SolutionStatus.PROCESSING,
-            SolutionStatus.COMPLETED,
-            SolutionStatus.FAILED
-        )
+        val statuses = SolutionStatus.entries
 
         statuses.forEach { status ->
             val solution = Solution().apply {

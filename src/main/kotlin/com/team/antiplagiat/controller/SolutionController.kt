@@ -1,5 +1,3 @@
-@file:Suppress("UNUSED", "USELESS_ELVIS", "SENSELESS_ELVIS")
-
 package com.team.antiplagiat.controller
 
 import com.team.antiplagiat.controller.dto.solution.SolutionRequest
@@ -43,7 +41,7 @@ class SolutionController(private val solutionService: SolutionService) {
             language = request.language,
             filePath = request.filePath,
             code = request.code
-        ) ?: return ResponseEntity.badRequest().build()
+        )
         return ResponseEntity.status(HttpStatus.CREATED).body(SolutionResponse.fromEntity(solution))
     }
 
@@ -114,9 +112,9 @@ class SolutionController(private val solutionService: SolutionService) {
         val solutionStatus = try {
             SolutionStatus.valueOf(status.uppercase())
         } catch (e: IllegalArgumentException) {
-            return ResponseEntity.badRequest().build()
+            throw IllegalArgumentException("Неизвестный статус: $status")
         }
-        val updated = solutionService.updateStatus(id, solutionStatus) ?: return ResponseEntity.notFound().build()
+        val updated = solutionService.updateStatus(id, solutionStatus)
         return ResponseEntity.ok(SolutionResponse.fromEntity(updated))
     }
 

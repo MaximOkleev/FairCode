@@ -46,5 +46,5 @@ CREATE TABLE IF NOT EXISTS solutions (
     submitted_at TIMESTAMP NOT NULL,
     file_path TEXT NOT NULL,
     code TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL
 );

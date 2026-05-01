@@ -12,7 +12,7 @@ enum class SolutionStatus {
             return try {
                 valueOf(status.uppercase())
             } catch (e: IllegalArgumentException) {
-                WAITING
+                throw IllegalArgumentException("Неизвестный статус: $status")
             }
         }
     }
