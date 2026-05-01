@@ -74,7 +74,10 @@ class ContestRepositoryTest {
     }
 
     private fun persistAdmin(login: String, email: String): User {
-        val user = User(login = login, email = email, role = User.Role.ADMIN)
+        val suffix = System.nanoTime().toString().takeLast(6)
+        val uniqueLogin = "$login-$suffix"
+        val uniqueEmail = email.replace("@", "+$suffix@")
+        val user = User(login = uniqueLogin, email = uniqueEmail, role = User.Role.ADMIN)
         entityManager.persistAndFlush(user)
         return user
     }

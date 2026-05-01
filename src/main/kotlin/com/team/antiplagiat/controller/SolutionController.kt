@@ -1,3 +1,5 @@
+@file:Suppress("UNUSED", "USELESS_ELVIS", "SENSELESS_ELVIS")
+
 package com.team.antiplagiat.controller
 
 import com.team.antiplagiat.controller.dto.SolutionRequest
@@ -31,6 +33,9 @@ class SolutionController(private val solutionService: SolutionService) {
         ]
     )
     fun create(@Valid @RequestBody request: SolutionRequest): ResponseEntity<SolutionResponse> {
+        if (request.userId <= 0 || request.problemId <= 0) {
+            return ResponseEntity.badRequest().build()
+        }
         val solution = solutionService.create(
             userId = request.userId,
             problemId = request.problemId,

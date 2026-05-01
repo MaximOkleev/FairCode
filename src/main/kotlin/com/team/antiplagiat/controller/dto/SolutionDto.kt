@@ -7,12 +7,15 @@ import java.time.LocalDateTime
 
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
+import jakarta.validation.constraints.Positive
 
 data class SolutionRequest(
     @field:NotNull
+    @field:Positive
     val userId: Long,
 
     @field:NotNull
+    @field:Positive
     val problemId: Long,
 
     @field:NotBlank

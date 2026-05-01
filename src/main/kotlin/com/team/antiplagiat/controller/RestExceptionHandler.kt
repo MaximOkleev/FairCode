@@ -1,3 +1,5 @@
+@file:Suppress("UNUSED")
+
 package com.team.antiplagiat.controller
 
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -8,14 +10,17 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
+import com.team.antiplagiat.exception.ResourceNotFoundException
 import org.springframework.web.bind.annotation.ResponseStatus
 import java.time.Instant
 
 private val logger = KotlinLogging.logger {}
 
 @ControllerAdvice
+@Suppress("UNUSED")
 class RestExceptionHandler {
 
+    @Suppress("UNUSED")
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleValidation(ex: MethodArgumentNotValidException, req: HttpServletRequest): ResponseEntity<Any> {
         val errors = ex.bindingResult.fieldErrors.associate { it.field to (it.defaultMessage ?: "invalid") }
@@ -31,6 +36,7 @@ class RestExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body)
     }
 
+    @Suppress("UNUSED")
     @ExceptionHandler(ConstraintViolationException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun handleConstraintViolation(ex: ConstraintViolationException, req: HttpServletRequest): ResponseEntity<Any> {
@@ -47,6 +53,7 @@ class RestExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body)
     }
 
+    @Suppress("UNUSED")
     @ExceptionHandler(Exception::class)
     fun handleAll(ex: Exception, req: HttpServletRequest): ResponseEntity<Any> {
         logger.error(ex) { "Unhandled exception for request=${req.method} ${req.requestURI}" }
@@ -58,6 +65,20 @@ class RestExceptionHandler {
             "path" to req.requestURI
         )
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body)
+    }
+
+    @Suppress("UNUSED")
+    @ExceptionHandler(ResourceNotFoundException::class)
+    fun handleNotFound(ex: ResourceNotFoundException, req: HttpServletRequest): ResponseEntity<Any> {
+        val body = mapOf(
+            "timestamp" to Instant.now().toString(),
+            "status" to HttpStatus.NOT_FOUND.value(),
+            "error" to "Not Found",
+            "message" to (ex.message ?: "Resource not found"),
+            "path" to req.requestURI
+        )
+        logger.warn { "Resource not found for request=${req.method} ${req.requestURI}: ${ex.message}" }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body)
     }
 }
 
