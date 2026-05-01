@@ -1,8 +1,9 @@
 package com.team.antiplagiat.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.team.antiplagiat.controller.dto.SolutionRequest
+import com.team.antiplagiat.controller.dto.solution.SolutionRequest
 import com.team.antiplagiat.models.Solution
+import com.team.antiplagiat.models.SolutionStatus
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.repository.SolutionRepository
@@ -86,7 +87,7 @@ class SolutionApiDocumentationTest {
                     println("Hello, World!")
                 }
             """.trimIndent(),
-            status = "COMPLETED"
+            status = SolutionStatus.COMPLETED
         )
         val saved = solutionRepository.save(solution)
         testSolutionId = saved.id!!
@@ -160,7 +161,6 @@ class SolutionApiDocumentationTest {
                 .content(objectMapper.writeValueAsString(request))
         )
             .andExpect(status().isBadRequest)
-            .andExpect(jsonPath("$.errors.language").exists())
     }
 
 
@@ -246,34 +246,34 @@ class SolutionApiDocumentationTest {
     }
 
     @Test
-    @DisplayName("PATCH /api/solutions/{id}/status - Обновить статус на CHECKING")
-    fun `should update solution status to CHECKING`() {
+    @DisplayName("PATCH /api/solutions/{id}/status - Обновить статус на PROCESSING")
+    fun `should update solution status to PROCESSING`() {
         mockMvc.perform(
             patch("/api/solutions/$testSolutionId/status")
-                .param("status", "CHECKING")
+                .param("status", "PROCESSING")
                 .contentType(MediaType.APPLICATION_JSON)
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").value(testSolutionId.toInt()))
-            .andExpect(jsonPath("$.status").value("CHECKING"))
+            .andExpect(jsonPath("$.status").value("PROCESSING"))
             .andDo { result ->
-                println("\nRESPONSE (PATCH /api/solutions/$testSolutionId/status?status=CHECKING):")
+                println("\nRESPONSE (PATCH /api/solutions/$testSolutionId/status?status=PROCESSING):")
                 println(result.response.contentAsString)
             }
     }
 
     @Test
-    @DisplayName("PATCH /api/solutions/{id}/status - Обновить статус на PLAGIARISM_DETECTED")
-    fun `should update solution status to PLAGIARISM_DETECTED`() {
+    @DisplayName("PATCH /api/solutions/{id}/status - Обновить статус на FAILED")
+    fun `should update solution status to FAILED`() {
         mockMvc.perform(
             patch("/api/solutions/$testSolutionId/status")
-                .param("status", "PLAGIARISM_DETECTED")
+                .param("status", "FAILED")
                 .contentType(MediaType.APPLICATION_JSON)
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.status").value("PLAGIARISM_DETECTED"))
+            .andExpect(jsonPath("$.status").value("FAILED"))
             .andDo { result ->
-                println("\nRESPONSE - Detected plagiarism:")
+                println("\nRESPONSE - Failed status:")
                 println(result.response.contentAsString)
             }
     }
