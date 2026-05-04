@@ -10,7 +10,8 @@ COPY . .
 
 #собираем приложение (исключаем тесты для ускорения)
 #используем ./gradlew для гарантии правильной версии Gradle
-RUN chmod +x ./gradlew && ./gradlew bootJar -x test --no-daemon
+RUN chmod +x ./gradlew
+RUN ./gradlew bootJar -x test --no-daemon
 
 # ---------- Stage 2: runtime ----------
 #лёгкий образ с JRE 17 (alpine — минимальный размер)
