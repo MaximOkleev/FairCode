@@ -25,6 +25,9 @@ WORKDIR /app
 # копируем собранный jar из builder stage
 COPY --from=builder /app/build/libs/*.jar app.jar
 
+# Создаём папку для логов и даём права appuser
+RUN mkdir -p /app/logs && chown -R appuser:appgroup /app/logs
+
 # переключаемся на непривилегированного пользователя после копирования
 USER appuser
 
