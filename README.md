@@ -6,6 +6,22 @@
 
 Для документации API подключен Swagger/OpenAPI.
 
+## Мониторинг
+
+Инструкция по Prometheus и Grafana лежит в `monitoring/README.md`.
+
+Ключевые адреса:
+
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000`
+- Метрики приложения: `http://localhost:8080/actuator/prometheus`
+
+Логи приложения пишутся в:
+
+- `logs/app.json`
+- `logs/business.log`
+- `logs/debug.log`
+
 # Основной функционал
 
 - Создание и просмотр пользователей;
