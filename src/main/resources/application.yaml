@@ -19,6 +19,9 @@ server:
 logging:
   level:
     com.team.antiplagiat: DEBUG
+    org.springframework: INFO
+    org.springframework.security: DEBUG
+  config: classpath:monitoring/logback-spring.xml
 app:
   solution:
     max-attempts: 50
@@ -43,9 +46,3 @@ management:
     export:
       prometheus:
         enabled: true
-logging:
-  level:
-    com.team.antiplagiat: DEBUG
-    org.springframework: INFO
-    org.springframework.security: DEBUG
-  config: classpath:monitoring/logback-spring.xml
