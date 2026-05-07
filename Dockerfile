@@ -16,6 +16,9 @@ COPY build/libs/antiplagiat-0.0.1-SNAPSHOT.jar app.jar
 # копируем конфигурации мониторинга рядом с приложением
 COPY src/main/resources/monitoring /app/monitoring
 
+# Создаём папку для логов и даём права appuser
+RUN mkdir -p /app/logs && chown -R appuser:appgroup /app/logs
+
 # переключаемся на непривилегированного пользователя после копирования
 USER appuser
 

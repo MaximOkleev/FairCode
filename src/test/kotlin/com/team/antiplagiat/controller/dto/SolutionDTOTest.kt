@@ -1,5 +1,8 @@
-package com.team.antiplagiat.controller.dto.solution
+package com.team.antiplagiat.controller.dto
 
+import com.team.antiplagiat.controller.dto.solution.SolutionRequest
+import com.team.antiplagiat.controller.dto.solution.SolutionResponse
+import com.team.antiplagiat.controller.dto.solution.toEntity
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.models.Solution
 import com.team.antiplagiat.models.SolutionStatus

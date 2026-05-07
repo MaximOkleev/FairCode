@@ -2,6 +2,9 @@ package com.team.antiplagiat.handler
 
 import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.exception.TooManyAttemptsException
+import com.team.antiplagiat.filter.TraceIdFilter
+import io.github.oshai.kotlinlogging.KotlinLogging
+import org.slf4j.MDC
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -11,6 +14,9 @@ import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import java.time.Instant
+
+private val logger = KotlinLogging.logger {}
 
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -18,53 +24,87 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException::class)
     fun handleNotFound(ex: ResourceNotFoundException): ResponseEntity<ErrorResponse> {
+        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+        logger.warn { "ResourceNotFoundException | traceId=$traceId | message=${ex.message}" }
         return ResponseEntity
             .status(HttpStatus.NOT_FOUND)
-            .body(ErrorResponse(ex.message ?: "Ресурс не найден"))
+            .body(ErrorResponse(
+                message = ex.message ?: "Ресурс не найден",
+                traceId = traceId
+            ))
     }
 
     @ExceptionHandler(TooManyAttemptsException::class)
     fun handleTooManyAttempts(ex: TooManyAttemptsException): ResponseEntity<ErrorResponse> {
+        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+        logger.warn { "TooManyAttemptsException | traceId=$traceId | message=${ex.message}" }
         return ResponseEntity
             .status(HttpStatus.TOO_MANY_REQUESTS)
-            .body(ErrorResponse(ex.message ?: "Превышен лимит попыток"))
-    }
-
-    @ExceptionHandler(MissingServletRequestParameterException::class)
-    fun handleMissingParameter(ex: MissingServletRequestParameterException): ResponseEntity<ErrorResponse> {
-        return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
-            .body(ErrorResponse("Отсутствует параметр: ${ex.parameterName}"))
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException::class)
-    fun handleValidation(ex: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> {
-        val errors = ex.bindingResult.allErrors.joinToString(", ") { it.defaultMessage ?: "Неверное поле" }
-        return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
-            .body(ErrorResponse(errors))
-    }
-
-    @ExceptionHandler(HttpMessageNotReadableException::class)
-    fun handleNotReadable(ex: HttpMessageNotReadableException): ResponseEntity<ErrorResponse> {
-        return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
-            .body(ErrorResponse("Неверный формат запроса"))
+            .body(ErrorResponse(
+                message = ex.message ?: "Превышен лимит попыток",
+                traceId = traceId
+            ))
     }
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleIllegalArgument(ex: IllegalArgumentException): ResponseEntity<ErrorResponse> {
+        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+        logger.warn { "IllegalArgumentException | traceId=$traceId | message=${ex.message}" }
         return ResponseEntity
             .status(HttpStatus.BAD_REQUEST)
-            .body(ErrorResponse(ex.message ?: "Неверный аргумент"))
+            .body(ErrorResponse(
+                message = ex.message ?: "Неверный аргумент",
+                traceId = traceId
+            ))
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun handleValidation(ex: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> {
+        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+        val errors = ex.bindingResult.allErrors.joinToString(", ") { it.defaultMessage ?: "Неверное поле" }
+        logger.warn { "Validation failed | traceId=$traceId | errors=$errors" }
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ErrorResponse(message = errors, traceId = traceId))
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException::class)
+    fun handleMissingParameter(ex: MissingServletRequestParameterException): ResponseEntity<ErrorResponse> {
+        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+        logger.warn { "Missing parameter: ${ex.parameterName} | traceId=$traceId" }
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ErrorResponse(
+                message = "Отсутствует параметр: ${ex.parameterName}",
+                traceId = traceId
+            ))
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleNotReadable(ex: HttpMessageNotReadableException): ResponseEntity<ErrorResponse> {
+        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+        logger.warn { "HttpMessageNotReadable | traceId=$traceId" }
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ErrorResponse(message = "Неверный формат запроса", traceId = traceId))
     }
 
     @ExceptionHandler(Exception::class)
     fun handleGeneric(ex: Exception): ResponseEntity<ErrorResponse> {
+        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+        // ERROR уровень — неожиданные ошибки логируем со стектрейсом
+        logger.error(ex) { "Необработанное исключение | traceId=$traceId | ${ex.javaClass.simpleName}: ${ex.message}" }
         return ResponseEntity
             .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(ErrorResponse("Внутренняя ошибка сервера"))
+            .body(ErrorResponse(
+                message = "Внутренняя ошибка сервера",
+                traceId = traceId
+            ))
     }
 }
 
-data class ErrorResponse(val message: String)
+data class ErrorResponse(
+    val message: String,
+    val traceId: String?,
+    val timestamp: String = Instant.now().toString()
+)

@@ -113,7 +113,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     fun `ErrorResponse data class works correctly`() {
-        val errorResponse = ErrorResponse("Test error message")
+        val errorResponse = ErrorResponse("Test error message", traceId = null)
 
         assertEquals("Test error message", errorResponse.message)
     }
