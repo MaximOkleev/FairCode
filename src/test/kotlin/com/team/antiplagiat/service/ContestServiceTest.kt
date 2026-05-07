@@ -5,6 +5,8 @@ import com.team.antiplagiat.models.Contest
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.repository.ContestRepository
 import com.team.antiplagiat.repository.UserRepository
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
@@ -14,6 +16,7 @@ import io.mockk.just
 import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.time.LocalDateTime
@@ -31,8 +34,19 @@ class ContestServiceTest {
     @MockK
     private lateinit var config: ContestConfig
 
+    @MockK
+    private lateinit var meterRegistry: MeterRegistry
+
+    @MockK(relaxed = true)
+    private lateinit var counter: Counter
+
     @InjectMockKs
     private lateinit var contestService: ContestService
+
+    @BeforeEach
+    fun setUp() {
+        every { meterRegistry.counter(any()) } returns counter
+    }
 
     @Test
     fun `create returns contest when admin exists and duration is within limit`() {
@@ -47,6 +61,7 @@ class ContestServiceTest {
         every { config.maxDurationHours } returns 2
         every { userRepository.findById(1L) } returns Optional.of(admin)
         every { contestRepository.save(any()) } answers { firstArg() }
+        every { meterRegistry.counter("contest.created") } returns counter
 
         val result = contestService.create(contest)
 
@@ -67,6 +82,7 @@ class ContestServiceTest {
         )
 
         every { config.maxDurationHours } returns 2
+        every { meterRegistry.counter("contest.create.failed.duration_limit") } returns counter
 
         val result = contestService.create(contest)
 
@@ -86,6 +102,7 @@ class ContestServiceTest {
 
         every { config.maxDurationHours } returns 2
         every { userRepository.findById(99L) } returns Optional.empty()
+        every { meterRegistry.counter("contest.create.failed.invalid_admin") } returns counter
 
         val result = contestService.create(contest)
 
@@ -106,6 +123,7 @@ class ContestServiceTest {
 
         every { config.maxDurationHours } returns 2
         every { userRepository.findById(2L) } returns Optional.of(user)
+        every { meterRegistry.counter("contest.create.failed.invalid_admin") } returns counter
 
         val result = contestService.create(contest)
 
@@ -177,6 +195,7 @@ class ContestServiceTest {
         every { config.maxDurationHours } returns 2
         every { contestRepository.findById(1L) } returns Optional.of(contest)
         every { contestRepository.save(contest) } answers { firstArg() }
+        every { meterRegistry.counter("contest.updated") } returns counter
 
         val result = contestService.update(1L, "New name", 5400)
 
@@ -207,6 +226,7 @@ class ContestServiceTest {
 
         every { config.maxDurationHours } returns 2
         every { contestRepository.findById(1L) } returns Optional.of(contest)
+        every { meterRegistry.counter("contest.update.failed.duration_limit") } returns counter
 
         val result = contestService.update(1L, null, 7201)
 
