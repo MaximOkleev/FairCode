@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 import org.springframework.validation.FieldError
-import org.springframework.validation.ObjectError
 import org.springframework.web.bind.MethodArgumentNotValidException
 
 class RestExceptionHandlerTest {
@@ -40,10 +39,10 @@ class RestExceptionHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertNotNull(response.body)
-        val body = response.body as Map<*, *>
-        assertEquals(HttpStatus.BAD_REQUEST.value(), body["status"])
-        assertEquals("Validation failed", body["message"])
-        assertEquals("/api/test", body["path"])
+        val body = response.body as ApiError
+        assertEquals(HttpStatus.BAD_REQUEST.value(), body.status)
+        assertEquals("Validation failed", body.message)
+        assertEquals("/api/test", body.path)
     }
 
     @Test
@@ -61,9 +60,9 @@ class RestExceptionHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertNotNull(response.body)
-        val body = response.body as Map<*, *>
-        assertEquals(HttpStatus.BAD_REQUEST.value(), body["status"])
-        assertEquals("Constraint violations", body["message"])
+        val body = response.body as ApiError
+        assertEquals(HttpStatus.BAD_REQUEST.value(), body.status)
+        assertEquals("Constraint violations", body.message)
     }
 
     @Test
@@ -74,10 +73,10 @@ class RestExceptionHandlerTest {
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.statusCode)
         assertNotNull(response.body)
-        val body = response.body as Map<*, *>
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), body["status"])
-        assertEquals("Internal Server Error", body["error"])
-        assertEquals("Something went wrong", body["message"])
+        val body = response.body as ApiError
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), body.status)
+        assertEquals("Internal Server Error", body.error)
+        assertEquals("Something went wrong", body.message)
     }
 
     @Test
@@ -88,8 +87,8 @@ class RestExceptionHandlerTest {
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.statusCode)
         assertNotNull(response.body)
-        val body = response.body as Map<*, *>
-        assertEquals("An unexpected error occurred", body["message"])
+        val body = response.body as ApiError
+        assertEquals("An unexpected error occurred", body.message)
     }
 
     @Test
@@ -100,11 +99,11 @@ class RestExceptionHandlerTest {
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertNotNull(response.body)
-        val body = response.body as Map<*, *>
-        assertEquals(HttpStatus.NOT_FOUND.value(), body["status"])
-        assertEquals("Not Found", body["error"])
-        assertEquals("User not found", body["message"])
-        assertEquals("/api/test", body["path"])
+        val body = response.body as ApiError
+        assertEquals(HttpStatus.NOT_FOUND.value(), body.status)
+        assertEquals("Not Found", body.error)
+        assertEquals("User not found", body.message)
+        assertEquals("/api/test", body.path)
     }
 
     @Test
@@ -124,8 +123,8 @@ class RestExceptionHandlerTest {
         val response = handler.handleAll(exception, mockRequest)
 
         assertNotNull(response.body)
-        val body = response.body as Map<*, *>
-        assertNotNull(body["timestamp"])
+        val body = response.body as ApiError
+        assertNotNull(body.timestamp)
     }
 
     @Test
@@ -144,9 +143,10 @@ class RestExceptionHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertNotNull(response.body)
-        val body = response.body as Map<*, *>
-        val errors = body["errors"] as Map<*, *>
-        assertEquals("must be at least 8 characters", errors["password"])
+        val body = response.body as ApiError
+        val errors = body.errors
+        assertNotNull(errors)
+        assertEquals("must be at least 8 characters", errors!!["password"])
     }
 }
 

@@ -235,7 +235,7 @@ class ContestServiceTest {
     }
 
     @Test
-    fun `delete calls repository deleteById`() {
+    fun `delete calls repository deleteById in contest service`() {
         every { contestRepository.deleteById(1L) } just Runs
 
         contestService.delete(1L)

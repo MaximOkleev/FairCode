@@ -1,6 +1,9 @@
 package com.team.antiplagiat.controller.dto.problem
 
 import com.team.antiplagiat.models.Problem
+import com.team.antiplagiat.controller.dto.ProblemRequest as RootProblemRequest
+import com.team.antiplagiat.controller.dto.ProblemResponse as RootProblemResponse
+import com.team.antiplagiat.controller.dto.toEntity as toRootEntity
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 
@@ -80,6 +83,28 @@ class ProblemDtoTest {
 
         assertEquals(originalProblem.name, reconstructed.name)
         assertEquals(originalProblem.description, reconstructed.description)
+    }
+
+    @Test
+    fun `root ProblemRequest toEntity should create Problem correctly`() {
+        val request = RootProblemRequest(name = "Root Problem", description = "Root Description")
+
+        val entity = request.toRootEntity()
+
+        assertEquals("Root Problem", entity.name)
+        assertEquals("Root Description", entity.description)
+        assertEquals(0L, entity.id)
+    }
+
+    @Test
+    fun `root ProblemResponse fromEntity should convert Problem correctly`() {
+        val problem = Problem(id = 8L, name = "Root Fibonacci", description = null)
+
+        val response = RootProblemResponse.fromEntity(problem)
+
+        assertEquals(8L, response.id)
+        assertEquals("Root Fibonacci", response.name)
+        assertNull(response.description)
     }
 }
 

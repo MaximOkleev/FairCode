@@ -1,6 +1,9 @@
 package com.team.antiplagiat.controller.dto.user
 
 import com.team.antiplagiat.models.User
+import com.team.antiplagiat.controller.dto.UserRequest as RootUserRequest
+import com.team.antiplagiat.controller.dto.UserResponse as RootUserResponse
+import com.team.antiplagiat.controller.dto.toEntity as toRootEntity
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 
@@ -50,6 +53,34 @@ class UserDtoTest {
 
         assertEquals(User.Role.BASIC, basicUserResponse.role)
         assertEquals(User.Role.ADMIN, adminUserResponse.role)
+    }
+
+    @Test
+    fun `root UserRequest toEntity should create User correctly`() {
+        val request = RootUserRequest(
+            login = "root_user",
+            email = "root@example.com",
+            role = User.Role.ADMIN
+        )
+
+        val user = request.toRootEntity()
+
+        assertEquals("root_user", user.login)
+        assertEquals("root@example.com", user.email)
+        assertEquals(User.Role.ADMIN, user.role)
+        assertEquals(0L, user.id)
+    }
+
+    @Test
+    fun `root UserResponse fromEntity should convert User correctly`() {
+        val user = User(id = 42L, login = "root_resp", email = "resp@example.com", role = User.Role.BASIC)
+
+        val response = RootUserResponse.fromEntity(user)
+
+        assertEquals(42L, response.id)
+        assertEquals("root_resp", response.login)
+        assertEquals("resp@example.com", response.email)
+        assertEquals(User.Role.BASIC, response.role)
     }
 }
 

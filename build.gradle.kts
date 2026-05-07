@@ -41,6 +41,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("io.micrometer:micrometer-registry-prometheus")
 	implementation("org.springframework.boot:spring-boot-starter-security")
+	implementation("com.auth0:java-jwt:4.4.0")
 	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 	implementation("io.micrometer:micrometer-core")
@@ -66,9 +67,8 @@ tasks.jacocoTestReport {
 		files(classDirectories.files.map {
 			fileTree(it) {
 				exclude(
-					"**/models/**",     // JPA-сущности с дефолтными значениями
-					"**/config/**",     // конфиги Spring
-					"**/*Application*" // точка входа main()
+					"**/models/**",
+					"**/*Application*"
 				)
 			}
 		})

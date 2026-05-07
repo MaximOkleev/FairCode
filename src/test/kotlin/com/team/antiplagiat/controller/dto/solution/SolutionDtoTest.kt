@@ -4,6 +4,9 @@ import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.models.Solution
 import com.team.antiplagiat.models.SolutionStatus
 import com.team.antiplagiat.models.User
+import com.team.antiplagiat.controller.dto.SolutionRequest as RootSolutionRequest
+import com.team.antiplagiat.controller.dto.SolutionResponse as RootSolutionResponse
+import com.team.antiplagiat.controller.dto.toEntity as toRootEntity
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import java.time.LocalDateTime
@@ -125,6 +128,56 @@ class SolutionDtoNestedTest {
             val response = SolutionResponse.fromEntity(solution)
             assertEquals(status, response.status)
         }
+    }
+
+    @Test
+    fun `root SolutionRequest toEntity should set WAITING status`() {
+        val request = RootSolutionRequest(
+            userId = 3L,
+            problemId = 4L,
+            language = "Kotlin",
+            filePath = "/root/path.kt",
+            code = "println(42)"
+        )
+        val user = User(id = 3L, login = "root_u", email = "root_u@test.com", role = User.Role.BASIC)
+        val problem = Problem(id = 4L, name = "Root Problem", description = "desc")
+
+        val solution = request.toRootEntity(user, problem)
+
+        assertEquals(user, solution.user)
+        assertEquals(problem, solution.problem)
+        assertEquals("Kotlin", solution.language)
+        assertEquals("/root/path.kt", solution.filePath)
+        assertEquals("println(42)", solution.code)
+        assertEquals(SolutionStatus.WAITING, solution.status)
+    }
+
+    @Test
+    fun `root SolutionResponse fromEntity should map all fields`() {
+        val user = User(id = 15L, login = "u15", email = "u15@test.com", role = User.Role.BASIC)
+        val problem = Problem(id = 16L, name = "P16", description = "D16")
+        val submittedAt = LocalDateTime.of(2026, 5, 7, 14, 45)
+        val solution = Solution(
+            id = 101L,
+            user = user,
+            problem = problem,
+            language = "Java",
+            status = SolutionStatus.PROCESSING,
+            submittedAt = submittedAt,
+            filePath = "/root/solution.java",
+            code = null
+        )
+
+        val response = RootSolutionResponse.fromEntity(solution)
+
+        assertEquals(101L, response.id)
+        assertEquals(15L, response.userId)
+        assertEquals(16L, response.problemId)
+        assertEquals("Java", response.language)
+        assertEquals(SolutionStatus.PROCESSING, response.status)
+        assertEquals(submittedAt, response.submittedAt)
+        assertEquals("/root/solution.java", response.filePath)
+        assertNull(response.code)
     }
 }
 
