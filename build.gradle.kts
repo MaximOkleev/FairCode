@@ -43,6 +43,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
+	implementation("io.micrometer:micrometer-core")
 }
 
 kotlin {

@@ -35,4 +35,17 @@ management:
   endpoints:
     web:
       exposure:
-        include: "prometheus,health"
+        include: "prometheus,health,info,metrics"
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+logging:
+  level:
+    com.team.antiplagiat: DEBUG
+    org.springframework: INFO
+    org.springframework.security: DEBUG
+  config: classpath:monitoring/logback-spring.xml

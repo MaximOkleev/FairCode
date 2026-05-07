@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import java.time.LocalDateTime
 
-class SolutionDtoTest {
+class SolutionDtoNestedTest {
 
     @Test
     fun `SolutionRequest should have all required fields`() {
