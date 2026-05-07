@@ -17,7 +17,8 @@ private val logger = KotlinLogging.logger {}
 class RegisterService(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
-    meterRegistry: MeterRegistry
+    meterRegistry: MeterRegistry,
+    private val tokenService: com.team.antiplagiat.config.TokenService
 ) {
 
     private val registrationCounter: Counter = Counter.builder("registration.success")
@@ -56,6 +57,7 @@ class RegisterService(
 
         registrationCounter.increment()
 
-        return RegisterResponse(userId = saved.id, email = saved.email)
+        val token = tokenService.generateToken(saved)
+        return RegisterResponse(userId = saved.id, email = saved.email, token = token)
     }
 }

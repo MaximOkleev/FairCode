@@ -22,6 +22,38 @@
 - `logs/business.log`
 - `logs/debug.log`
 
+# Security and JWT
+
+The application supports stateless JWT authentication. To enable it set the environment variable or application property:
+
+- `APP_SECURITY_ENABLED=true` (or `app.security.enabled=true`)
+- `APP_SECURITY_JWT_SECRET` — secret key for signing tokens (defaults to `dev-secret-change-me`)
+- `APP_SECURITY_JWT_EXPIRATION_SECONDS` — token lifetime in seconds (defaults to `86400`)
+
+When security is enabled, endpoints under `/api/**` require a valid `Authorization: Bearer <token>` header. Tokens are issued by authentication endpoints (registration/login).
+
+Examples (curl)
+--------------
+
+# Register and get token
+```
+curl -s -X POST http://localhost:8080/api/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password123"}'
+```
+
+# Login and get token
+```
+curl -s -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"login":"user","password":"password123"}'
+```
+
+# Use token to call protected endpoint
+```
+curl -s http://localhost:8080/api/users -H "Authorization: Bearer <token>"
+```
+
 # Основной функционал
 
 - Создание и просмотр пользователей;

@@ -34,6 +34,9 @@ app:
       username: ${APP_SECURITY_MEMORY_USERNAME:admin}
       password: ${APP_SECURITY_MEMORY_PASSWORD:admin}
       roles: ${APP_SECURITY_MEMORY_ROLES:ADMIN}
+    jwt:
+      secret: ${APP_SECURITY_JWT_SECRET:dev-secret-change-me}
+      expiration-seconds: ${APP_SECURITY_JWT_EXPIRATION_SECONDS:86400}
 management:
   endpoints:
     web:

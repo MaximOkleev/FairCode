@@ -27,7 +27,7 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    fun `handleNotFound returns default message when null`() {
+    fun `global handler handleNotFound returns default message when null`() {
         val exception = ResourceNotFoundException("")
 
         val response = handler.handleNotFound(exception)
