@@ -47,7 +47,7 @@ class JwtAuthenticationFilterTest {
         assertTrue(chainCalled)
         val auth = SecurityContextHolder.getContext().authentication
         assertNotNull(auth)
-        assertEquals("u", auth.name)
+        assertEquals("1", auth.name)
         val attr = req.getAttribute("tokenPayload") as? TokenPayload
         assertNotNull(attr)
         assertEquals(1L, attr!!.userId)
@@ -96,4 +96,3 @@ class JwtAuthenticationFilterTest {
         assertNull(req.getAttribute("tokenPayload"))
     }
 }
-

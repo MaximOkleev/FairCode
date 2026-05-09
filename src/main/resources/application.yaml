@@ -13,14 +13,26 @@ spring:
       ddl-auto: update
     show-sql: true
     defer-datasource-initialization: true
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:your-email@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:your-app-password}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 server:
   error:
     include-message: always
+    include-stacktrace: always
 logging:
   level:
+    root: INFO
     com.team.antiplagiat: DEBUG
-    org.springframework: INFO
-    org.springframework.security: DEBUG
+    org.springframework.security: TRACE
   config: classpath:monitoring/logback-spring.xml
 app:
   solution:
@@ -41,11 +53,11 @@ management:
   endpoints:
     web:
       exposure:
-        include: "prometheus,health,info,metrics"
+        include: prometheus,health,info,metrics
   endpoint:
     health:
       show-details: always
-  metrics:
-    export:
-      prometheus:
+  prometheus:
+    metrics:
+      export:
         enabled: true

@@ -1,104 +1,126 @@
-services:  # Раздел с описанием сервисов (контейнеров)
+services:
 
-  postgres:  # Сервис базы данных PostgreSQL
-    image: postgres:15-alpine  # Используется официальный образ PostgreSQL 15 на базе Alpine (лёгкий образ)
-    container_name: antiplagiat-db  # Явное имя контейнера (удобно для логов и exec)
+  postgres:
+    image: postgres:15-alpine
+    container_name: antiplagiat-db
 
-    environment:  # Переменные окружения для инициализации БД
-      POSTGRES_DB: antiplagiat          # Имя базы данных, создаваемой при первом запуске
-      POSTGRES_USER: postgres           # Пользователь базы данных
-      POSTGRES_PASSWORD: postgres       # Пароль пользователя
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: antiplagiat
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
 
     ports:
-      - "5432:5432"  # Проброс порта: <порт_хоста>:<порт_контейнера>
-      # Позволяет подключаться к БД с хоста через localhost:5432
+      - "5432:5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Монтирование volume:
-      # postgres_data — именованный volume
-      # /var/lib/postgresql/data — директория хранения данных PostgreSQL внутри контейнера
-      # Обеспечивает сохранность данных при перезапуске контейнера
 
-    healthcheck:  # Проверка готовности сервиса
+    healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d antiplagiat" ]
-      # Команда проверки:
-      # pg_isready — утилита PostgreSQL
-      # Проверяет, принимает ли сервер подключения
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-      interval: 5s  # Интервал между проверками
-      timeout: 5s   # Максимальное время ожидания ответа
-      retries: 5    # Количество попыток до признания контейнера unhealthy
+  app:
+    build:
+      context: .
 
-  app:  # Сервис Spring Boot приложения
-    build: .  # Сборка образа из Dockerfile в текущей директории
-    container_name: antiplagiat-app  # Явное имя контейнера
+    container_name: antiplagiat-app
+
+    restart: unless-stopped
+
+    depends_on:
+      - postgres
+      - mailhog
 
     ports:
       - "8080:8080"
-      # Проброс порта:
-      # Приложение будет доступно по http://localhost:8080
 
-    environment:  # Переменные окружения для Spring Boot
+    environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/antiplagiat
-      # JDBC URL подключения к БД
-      # Важно: используется имя сервиса "postgres" как hostname
-      # Docker Compose создаёт внутреннюю сеть,
-      # и сервисы могут обращаться друг к другу по имени
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
 
-      SPRING_DATASOURCE_USERNAME: postgres   # Пользователь БД
-      SPRING_DATASOURCE_PASSWORD: postgres   # Пароль БД
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
 
-      # Spring Security Configuration
-      # По умолчанию Security ОТКЛЮЧЕНА для docker (dev mode)
-      # Для production: измените на true и используйте secrets management
-      APP_SECURITY_ENABLED: "false"                    # Отключить security (dev mode)
-      APP_SECURITY_USER_PROVIDER: database             # Использовать database users когда включена
-      # APP_SECURITY_MEMORY_USERNAME: admin            # in-memory user (не используется, security disabled)
-      # APP_SECURITY_MEMORY_PASSWORD: admin            # in-memory password
+      # Mail
+      SPRING_MAIL_HOST: mailhog
+      SPRING_MAIL_PORT: 1025
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "false"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "false"
 
-      maxAttempts: 100           # Пользовательская переменная (используется в приложении как maxAttemptsPerTask)
-      maxDurationHours: 8       # Пользовательская переменная (используется в приложении как maxDurationHours)
+      # Security
+      APP_SECURITY_ENABLED: "false"
+      APP_SECURITY_USER_PROVIDER: database
 
-    depends_on:
-      postgres:
-        condition: service_healthy
-        # Гарантирует, что контейнер app запустится
-        # только после успешного прохождения healthcheck у postgres
-        # Важно: это НЕ гарантирует логическую готовность БД,
-        # но гарантирует, что контейнер запущен и отвечает
+      # Monitoring
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+      MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED: "true"
+
+      # Custom app properties
+      MAX_ATTEMPTS: 100
+      MAX_DURATION_HOURS: 8
+
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health" ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
   prometheus:
     image: prom/prometheus:latest
     container_name: antiplagiat-prometheus
+
+    restart: unless-stopped
+
+    depends_on:
+      app:
+        condition: service_healthy
+
     ports:
       - "9090:9090"
+
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   grafana:
     image: grafana/grafana:latest
     container_name: antiplagiat-grafana
-    ports:
-      - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-    volumes:
-      - grafana_data:/var/lib/grafana
+
+    restart: unless-stopped
+
     depends_on:
       - prometheus
 
+    ports:
+      - "3000:3000"
+
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: antiplagiat-mailhog
+
+    restart: unless-stopped
+
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+
 volumes:
   postgres_data:
-  # Объявление именованного volume
-  # Docker создаёт его автоматически при первом запуске
-  # Используется для постоянного хранения данных PostgreSQL
   prometheus_data:
   grafana_data:

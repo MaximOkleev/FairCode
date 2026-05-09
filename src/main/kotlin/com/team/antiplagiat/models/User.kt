@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import java.time.Instant
 
 @Entity
 @Table(name = "users")
@@ -29,7 +30,13 @@ class User(
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    var role: Role = Role.BASIC
+    var role: Role = Role.BASIC,
+
+    @Column
+    var resetToken: String? = null,
+
+    @Column
+    var resetTokenExpiry: Instant? = null
 ) {
     enum class Role { ADMIN, BASIC }
 }

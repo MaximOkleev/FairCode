@@ -10,6 +10,7 @@ import com.team.antiplagiat.models.User
 import com.team.antiplagiat.repository.ProblemRepository
 import com.team.antiplagiat.repository.SolutionRepository
 import com.team.antiplagiat.repository.UserRepository
+import io.micrometer.core.instrument.MeterRegistry
 import io.mockk.*
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
@@ -25,6 +26,7 @@ class SolutionServiceTest {
     private lateinit var userRepository: UserRepository
     private lateinit var problemRepository: ProblemRepository
     private lateinit var solutionConfig: SolutionConfig
+    private lateinit var meterRegistry: MeterRegistry
     private lateinit var solutionService: SolutionService
 
     @BeforeEach
@@ -33,11 +35,13 @@ class SolutionServiceTest {
         userRepository = mockk()
         problemRepository = mockk()
         solutionConfig = mockk()
+        meterRegistry = mockk(relaxed = true)
         solutionService = SolutionService(
             solutionRepository,
             userRepository,
             problemRepository,
-            solutionConfig
+            solutionConfig,
+            meterRegistry
         )
     }
 
