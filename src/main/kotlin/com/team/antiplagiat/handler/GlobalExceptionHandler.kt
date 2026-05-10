@@ -28,10 +28,7 @@ class GlobalExceptionHandler {
     ): ResponseEntity<ErrorResponse> {
 
         val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
-
-        logger.warn {
-            "ResourceNotFoundException | traceId=$traceId | message=${ex.message}"
-        }
+        logger.warn { "ResourceNotFoundException | traceId=$traceId |message=${ex.message}" }
 
         return ResponseEntity
             .status(HttpStatus.NOT_FOUND)
