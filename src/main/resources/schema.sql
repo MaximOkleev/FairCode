@@ -3,7 +3,9 @@ CREATE TABLE IF NOT EXISTS users (
     login VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('ADMIN', 'BASIC'))
+    role VARCHAR(20) NOT NULL CHECK (role IN ('ADMIN', 'BASIC')),
+    reset_token VARCHAR(255),
+    reset_token_expiry TIMESTAMP
 );
 
 -- Инициализация тестовых пользователей для разработки/тестирования

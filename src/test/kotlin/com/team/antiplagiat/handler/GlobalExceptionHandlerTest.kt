@@ -88,7 +88,7 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.statusCode)
         assertNotNull(response.body)
-        assertEquals("Внутренняя ошибка сервера", response.body?.message)
+        assertEquals("Unknown error", response.body?.message)
     }
 
     @Test

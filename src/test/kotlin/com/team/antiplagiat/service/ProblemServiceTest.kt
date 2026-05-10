@@ -2,6 +2,7 @@ package com.team.antiplagiat.service
 
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.repository.ProblemRepository
+import io.micrometer.core.instrument.MeterRegistry
 import io.mockk.every
 import io.mockk.just
 import io.mockk.verify
@@ -19,11 +20,15 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.util.Optional
 
+
 @ExtendWith(MockKExtension::class)
 class ProblemServiceTest {
 
     @MockK
     private lateinit var problemRepository: ProblemRepository
+
+    @MockK(relaxed = true)
+    private lateinit var meterRegistry: MeterRegistry
 
     @InjectMockKs
     private lateinit var problemService: ProblemService

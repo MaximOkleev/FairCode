@@ -3,6 +3,7 @@ package com.team.antiplagiat.service
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.repository.ProblemRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -13,10 +14,14 @@ import org.springframework.transaction.annotation.Transactional
  * Все методы выполняются в рамках транзакции благодаря аннотации [@Transactional].
  *
  * @property problemRepository репозиторий для работы с таблицей `problems`
+ * @property meterRegistry реестр метрик для отслеживания событий
  */
 @Service
 @Transactional
-class ProblemService(private val problemRepository: ProblemRepository) {
+class ProblemService(
+    private val problemRepository: ProblemRepository,
+    private val meterRegistry: MeterRegistry
+) {
 
     private val logger = KotlinLogging.logger {}
 
@@ -29,7 +34,24 @@ class ProblemService(private val problemRepository: ProblemRepository) {
      */
     fun create(name: String, description: String?): Problem {
         logger.info { "Создание задачи: $name" }
-        return problemRepository.save(Problem(name = name, description = description))
+        logger.debug { "Параметры создания: name='$name', description='$description'" }
+        
+        return try {
+            val newProblem = Problem(name = name, description = description)
+            logger.debug { "Объект Problem создан перед сохранением: $newProblem" }
+            
+            val saved = problemRepository.save(newProblem)
+            logger.info { "Задача успешно создана: id=${saved.id}, name='${saved.name}'" }
+            logger.debug { "Сохранённое значение: $saved" }
+            
+            meterRegistry.counter("problem.created.total").increment()
+            saved
+        } catch (e: Exception) {
+            logger.error { "Ошибка при создании задачи: ${e.message}" }
+            logger.debug { "Stack trace: ${e.stackTrace.joinToString("\n")}" }
+            meterRegistry.counter("problem.created.failed.total").increment()
+            throw e
+        }
     }
 
     /**
@@ -38,14 +60,28 @@ class ProblemService(private val problemRepository: ProblemRepository) {
      * @param id идентификатор задачи
      * @return задача если найдена, иначе `null`
      */
-    fun findById(id: Long): Problem? = problemRepository.findById(id).orElse(null)
+    fun findById(id: Long): Problem? {
+        logger.debug { "Поиск задачи по id=$id" }
+        val result = problemRepository.findById(id).orElse(null)
+        if (result != null) {
+            logger.debug { "Задача найдена: id=$id, name='${result.name}'" }
+        } else {
+            logger.debug { "Задача не найдена: id=$id" }
+        }
+        return result
+    }
 
     /**
      * Возвращает список всех задач из базы данных.
      *
      * @return список всех задач, пустой список если задач нет
      */
-    fun findAll(): List<Problem> = problemRepository.findAll()
+    fun findAll(): List<Problem> {
+        logger.debug { "Получение списка всех задач" }
+        val result = problemRepository.findAll()
+        logger.debug { "Получено задач: ${result.size}" }
+        return result
+    }
 
     /**
      * Обновляет поля существующей задачи.
@@ -59,10 +95,36 @@ class ProblemService(private val problemRepository: ProblemRepository) {
      * @return обновлённая задача, или `null` если задача не найдена
      */
     fun update(id: Long, name: String?, description: String?): Problem? {
-        val problem = findById(id) ?: return null
-        name?.let { problem.name = it }
-        description?.let { problem.description = it }
-        return problemRepository.save(problem)
+        logger.info { "Обновление задачи id=$id: name=$name, description=$description" }
+        logger.debug { "Параметры обновления: id=$id, newName=$name, newDescription=$description" }
+        
+        val problem = findById(id)
+        if (problem == null) {
+            logger.warn { "Задача не найдена для обновления: id=$id" }
+            logger.debug { "Операция update отменена: задача с id=$id не существует" }
+            meterRegistry.counter("problem.update.failed.not_found.total").increment()
+            return null
+        }
+        
+        val oldName = problem.name
+        val oldDescription = problem.description
+        
+        name?.let {
+            logger.debug { "Изменение названия: '$oldName' -> '$it'" }
+            problem.name = it
+        }
+        
+        description?.let {
+            logger.debug { "Изменение описания: '$oldDescription' -> '$it'" }
+            problem.description = it
+        }
+        
+        val updated = problemRepository.save(problem)
+        logger.info { "Задача успешно обновлена: id=${updated.id}, name='${updated.name}'" }
+        logger.debug { "Обновлённое значение: $updated" }
+        
+        meterRegistry.counter("problem.updated.total").increment()
+        return updated
     }
 
     /**
@@ -73,7 +135,19 @@ class ProblemService(private val problemRepository: ProblemRepository) {
      * @param id идентификатор задачи для удаления
      */
     fun delete(id: Long) {
-        logger.info { "Удаление задачи id=$id" }
-        problemRepository.deleteById(id)
+        logger.info { "Начало удаления задачи id=$id" }
+        logger.debug { "Выполняется DELETE операция для задачи id=$id" }
+        
+        return try {
+            problemRepository.deleteById(id)
+            logger.info { "Задача успешно удалена: id=$id" }
+            logger.debug { "Операция DELETE завершена успешно для id=$id" }
+            meterRegistry.counter("problem.deleted.total").increment()
+        } catch (e: Exception) {
+            logger.error { "Ошибка при удалении задачи id=$id: ${e.message}" }
+            logger.debug { "Stack trace: ${e.stackTrace.joinToString("\n")}" }
+            meterRegistry.counter("problem.deleted.failed.total").increment()
+            throw e
+        }
     }
 }
