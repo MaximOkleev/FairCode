@@ -82,5 +82,29 @@ class UserDtoTest {
         assertEquals("resp@example.com", response.email)
         assertEquals(User.Role.BASIC, response.role)
     }
+
+    @Test
+    fun `user dto mapping`() {
+        val user = User(id = 2L, login = "u1", email = "u1@e.com", role = User.Role.BASIC)
+        val resp = RootUserResponse.fromEntity(user)
+        assertEquals(2L, resp.id)
+        assertEquals("u1", resp.login)
+
+        val req = RootUserRequest(login = "x", email = "x@e.com", role = User.Role.BASIC)
+        assertEquals("x", req.login)
+    }
+
+    @Test
+    fun `user dto round trip`() {
+        val request = RootUserRequest(login = "u", email = "u@example.com", role = User.Role.BASIC)
+        val entity = request.toRootEntity()
+        val response = RootUserResponse.fromEntity(entity.apply { id = 20L })
+
+        assertEquals("u", entity.login)
+        assertEquals("u@example.com", entity.email)
+        assertEquals(User.Role.BASIC, entity.role)
+        assertEquals(20L, response.id)
+        assertEquals("u", response.login)
+    }
 }
 

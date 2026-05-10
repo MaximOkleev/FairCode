@@ -97,13 +97,11 @@ class SecurityConfig(private val env: Environment) {
             auth.anyRequest().permitAll()
         }
         http.sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-        // exception handling: provide JSON responses for auth errors if handlers are available
         http.exceptionHandling { eh ->
             authEntryPointProvider.ifAvailable { eh.authenticationEntryPoint(it) }
             accessDeniedProvider.ifAvailable { eh.accessDeniedHandler(it) }
         }
 
-        // If TokenService exists in the context, create JwtAuthenticationFilter and register it.
         val ctx: ApplicationContext? = http.getSharedObject(ApplicationContext::class.java)
         ctx?.getBeanProvider(TokenService::class.java)?.ifAvailable { tokenService ->
             http.addFilterBefore(JwtAuthenticationFilter(tokenService), UsernamePasswordAuthenticationFilter::class.java)

@@ -2,7 +2,6 @@ package com.team.antiplagiat.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.team.antiplagiat.controller.dto.contest.ContestRequest
-import com.team.antiplagiat.controller.dto.contest.ContestResponse
 import com.team.antiplagiat.models.Contest
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.service.ContestService
@@ -18,6 +17,12 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import java.time.LocalDateTime
+import io.mockk.every
+import io.mockk.mockk
+import org.junit.jupiter.api.Assertions.assertEquals
+import jakarta.servlet.http.HttpServletRequest
+import com.team.antiplagiat.config.TokenPayload
+import org.springframework.http.HttpStatus
 
 @WebMvcTest(ContestController::class)
 class ContestControllerTest {
@@ -44,7 +49,6 @@ class ContestControllerTest {
         val now = LocalDateTime.now()
         val request = ContestRequest(
             name = "Test Contest",
-            adminId = 1L,
             startedAt = now,
             duration = 120
         )
@@ -71,12 +75,34 @@ class ContestControllerTest {
             post("/api/contests")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "admin",
+                    email = "admin@example.com",
+                    role = "ADMIN"
+                ))
         )
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.name").value("Test Contest"))
-            .andExpect(jsonPath("$.adminId").value(1))
             .andExpect(jsonPath("$.duration").value(120))
+    }
+
+    @Test
+    fun `create should return 401 when no token provided`() {
+        val now = LocalDateTime.now()
+        val request = ContestRequest(
+            name = "Test Contest",
+            startedAt = now,
+            duration = 120
+        )
+
+        mockMvc.perform(
+            post("/api/contests")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        )
+            .andExpect(status().isUnauthorized)
     }
 
     @Test
@@ -84,17 +110,55 @@ class ContestControllerTest {
         val now = LocalDateTime.now()
         val request = ContestRequest(
             name = "Test Contest",
-            adminId = 999L,
             startedAt = now,
             duration = 120
         )
 
-        whenever(userService.findById(999L)).thenReturn(null)
+        whenever(userService.findById(1L)).thenReturn(null)
 
         mockMvc.perform(
             post("/api/contests")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "admin",
+                    email = "admin@example.com",
+                    role = "ADMIN"
+                ))
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `create should return 400 when contest service fails`() {
+        val now = LocalDateTime.now()
+        val request = ContestRequest(
+            name = "Test Contest",
+            startedAt = now,
+            duration = 120
+        )
+
+        val admin = User(
+            id = 1L,
+            login = "admin",
+            email = "admin@example.com",
+            role = User.Role.ADMIN
+        )
+
+        whenever(userService.findById(1L)).thenReturn(admin)
+        whenever(contestService.create(any())).thenReturn(null)
+
+        mockMvc.perform(
+            post("/api/contests")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "admin",
+                    email = "admin@example.com",
+                    role = "ADMIN"
+                ))
         )
             .andExpect(status().isBadRequest)
     }
@@ -113,18 +177,27 @@ class ContestControllerTest {
 
         whenever(contestService.findById(1L)).thenReturn(contest)
 
-        mockMvc.perform(get("/api/contests/1"))
+        mockMvc.perform(get("/api/contests/1").requestAttr("tokenPayload", TokenPayload(
+            userId = 1L,
+            login = "admin",
+            email = "admin@example.com",
+            role = "ADMIN"
+        )))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.name").value("Test Contest"))
-            .andExpect(jsonPath("$.adminId").value(1))
     }
 
     @Test
     fun `getById should return 404 when contest not found`() {
         whenever(contestService.findById(999L)).thenReturn(null)
 
-        mockMvc.perform(get("/api/contests/999"))
+        mockMvc.perform(get("/api/contests/999").requestAttr("tokenPayload", TokenPayload(
+            userId = 1L,
+            login = "admin",
+            email = "admin@example.com",
+            role = "ADMIN"
+        )))
             .andExpect(status().isNotFound)
     }
 
@@ -139,7 +212,12 @@ class ContestControllerTest {
 
         whenever(contestService.findAll()).thenReturn(contests)
 
-        mockMvc.perform(get("/api/contests"))
+        mockMvc.perform(get("/api/contests").requestAttr("tokenPayload", TokenPayload(
+            userId = 1L,
+            login = "admin",
+            email = "admin@example.com",
+            role = "ADMIN"
+        )))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[0].name").value("Contest 1"))
@@ -150,7 +228,12 @@ class ContestControllerTest {
     fun `getAll should return empty list when no contests`() {
         whenever(contestService.findAll()).thenReturn(emptyList())
 
-        mockMvc.perform(get("/api/contests"))
+        mockMvc.perform(get("/api/contests").requestAttr("tokenPayload", TokenPayload(
+            userId = 1L,
+            login = "admin",
+            email = "admin@example.com",
+            role = "ADMIN"
+        )))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(0))
     }
@@ -166,18 +249,26 @@ class ContestControllerTest {
 
         whenever(contestService.findByAdmin(1L)).thenReturn(contests)
 
-        mockMvc.perform(get("/api/contests/by-admin/1"))
+        mockMvc.perform(get("/api/contests/by-admin").requestAttr("tokenPayload", TokenPayload(
+            userId = 1L,
+            login = "admin",
+            email = "admin@example.com",
+            role = "ADMIN"
+        )))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(2))
-            .andExpect(jsonPath("$[0].adminId").value(1))
-            .andExpect(jsonPath("$[1].adminId").value(1))
     }
 
     @Test
     fun `getByAdmin should return empty list when admin has no contests`() {
-        whenever(contestService.findByAdmin(999L)).thenReturn(emptyList())
+        whenever(contestService.findByAdmin(1L)).thenReturn(emptyList())
 
-        mockMvc.perform(get("/api/contests/by-admin/999"))
+        mockMvc.perform(get("/api/contests/by-admin").requestAttr("tokenPayload", TokenPayload(
+            userId = 1L,
+            login = "admin",
+            email = "admin@example.com",
+            role = "ADMIN"
+        )))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(0))
     }
@@ -200,6 +291,12 @@ class ContestControllerTest {
             put("/api/contests/1")
                 .param("name", "Updated Contest")
                 .param("duration", "150")
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "admin",
+                    email = "admin@example.com",
+                    role = "ADMIN"
+                ))
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").value(1))
@@ -215,6 +312,12 @@ class ContestControllerTest {
             put("/api/contests/999")
                 .param("name", "Updated Contest")
                 .param("duration", "150")
+                .requestAttr("tokenPayload",TokenPayload(
+                    userId = 1L,
+                    login = "admin",
+                    email = "admin@example.com",
+                    role = "ADMIN"
+                ))
         )
             .andExpect(status().isNotFound)
     }
@@ -223,10 +326,41 @@ class ContestControllerTest {
     fun `delete should return 204 when contest exists`() {
         doNothing().whenever(contestService).delete(1L)
 
-        mockMvc.perform(delete("/api/contests/1"))
+        mockMvc.perform(delete("/api/contests/1").requestAttr("tokenPayload", TokenPayload(
+            userId = 1L,
+            login = "admin",
+            email = "admin@example.com",
+            role = "ADMIN"
+        )))
             .andExpect(status().isNoContent)
 
         verify(contestService, times(1)).delete(1L)
+    }
+
+    private fun requestWith(payload: TokenPayload?): HttpServletRequest = mockk<HttpServletRequest>().also {
+        every { it.getAttribute("tokenPayload") } returns payload
+    }
+
+    private fun payload(userId: Long, role: String) = TokenPayload(
+        userId = userId,
+        login = "user$userId",
+        email = "user$userId@example.com",
+        role = role
+    )
+
+    @Test
+    fun `contest controller covers unauthorized branches`() {
+        val contestService = mockk<ContestService>(relaxed = true)
+        val userService = mockk<UserService>(relaxed = true)
+        val controller = ContestController(contestService, userService)
+        val request = ContestRequest("Contest", LocalDateTime.now(), 60)
+
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.create(request, requestWith(null)).statusCode)
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.get(1L, requestWith(null)).statusCode)
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.getAll(requestWith(null)).statusCode)
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.getByAdmin(requestWith(null)).statusCode)
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.update(1L, "Updated", 120L, requestWith(null)).statusCode)
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.delete(1L, requestWith(null)).statusCode)
     }
 }
 

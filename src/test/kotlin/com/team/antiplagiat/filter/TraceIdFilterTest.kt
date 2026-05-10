@@ -64,5 +64,29 @@ class TraceIdFilterTest {
         assertEquals(provided, resp.getHeader(TraceIdFilter.TRACE_ID_HEADER))
         assertNull(MDC.get(TraceIdFilter.TRACE_ID_KEY))
     }
+
+    @Test
+    fun `filter generates traceId when provided header is blank`() {
+        val filter = TraceIdFilter()
+
+        val req = MockHttpServletRequest()
+        val resp = MockHttpServletResponse()
+        req.addHeader(TraceIdFilter.TRACE_ID_HEADER, "   ")
+
+        var traceIdDuringChain: String? = null
+
+        val chain = object : FilterChain {
+            override fun doFilter(request: jakarta.servlet.ServletRequest?, response: jakarta.servlet.ServletResponse?) {
+                traceIdDuringChain = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+            }
+        }
+
+        filter.doFilter(req, resp, chain)
+
+        assertNotNull(traceIdDuringChain)
+        assertEquals(16, traceIdDuringChain!!.length)
+        assertEquals(traceIdDuringChain, resp.getHeader(TraceIdFilter.TRACE_ID_HEADER))
+        assertNull(MDC.get(TraceIdFilter.TRACE_ID_KEY))
+    }
 }
 

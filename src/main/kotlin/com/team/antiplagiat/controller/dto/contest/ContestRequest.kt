@@ -6,7 +6,6 @@ import java.time.LocalDateTime
 
 data class ContestRequest(
     val name: String,
-    val adminId: Long,
     val startedAt: LocalDateTime,
     val duration: Int
 )

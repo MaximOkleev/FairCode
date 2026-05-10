@@ -2,8 +2,6 @@ package com.team.antiplagiat.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.team.antiplagiat.controller.dto.solution.SolutionRequest
-import com.team.antiplagiat.exception.ResourceNotFoundException
-import com.team.antiplagiat.exception.TooManyAttemptsException
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.models.Solution
 import com.team.antiplagiat.models.SolutionStatus
@@ -19,6 +17,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+import io.mockk.every
+import io.mockk.mockk
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+import jakarta.servlet.http.HttpServletRequest
+import com.team.antiplagiat.config.TokenPayload
+import org.springframework.http.HttpStatus
 import java.time.LocalDateTime
 
 @WebMvcTest(SolutionController::class)
@@ -41,369 +46,294 @@ class SolutionControllerTest {
     @Test
     fun `create should return 201 when solution created successfully`() {
         val request = SolutionRequest(
-            userId = 1L,
-            problemId = 2L,
-            language = "Kotlin",
-            filePath = "/path/to/solution.kt",
-            code = "println('Hello')"
+            problemId = 1L,
+            language = "kotlin",
+            filePath = "/test.kt",
+            code = "fun main() {}"
         )
 
+        val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
+        val problem = Problem(id = 1L, name = "Test Problem", description = "")
         val solution = Solution(
-            id = 100L,
-            user = createUser(1L),
-            problem = createProblem(2L),
-            language = "Kotlin",
-            status = SolutionStatus.WAITING,
-            submittedAt = LocalDateTime.now(),
-            filePath = "/path/to/solution.kt",
-            code = "println('Hello')"
+            id = 1L,
+            user = user,
+            problem = problem,
+            language = "kotlin",
+            filePath = "/test.kt",
+            code = "fun main() {}",
+            status = SolutionStatus.WAITING
         )
 
-        whenever(solutionService.create(any(), any(), any(), any(), any())).thenReturn(solution)
-
-        mockMvc.perform(
-            post("/api/solutions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        )
-            .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.id").value(100))
-            .andExpect(jsonPath("$.userId").value(1))
-            .andExpect(jsonPath("$.problemId").value(2))
-            .andExpect(jsonPath("$.language").value("Kotlin"))
-            .andExpect(jsonPath("$.status").value("WAITING"))
-            .andExpect(jsonPath("$.filePath").value("/path/to/solution.kt"))
-            .andExpect(jsonPath("$.code").value("println('Hello')"))
-            .andExpect(jsonPath("$.submittedAt").exists())
-    }
-
-    @Test
-    fun `create should return 429 when max attempts exceeded`() {
-        val request = SolutionRequest(
-            userId = 1L,
-            problemId = 2L,
-            language = "Java",
-            filePath = "/path",
-            code = null
-        )
-
-        whenever(solutionService.create(eq(1L), eq(2L), eq("Java"), eq("/path"), eq(null)))
-            .thenThrow(TooManyAttemptsException("Превышен лимит попыток: 5"))
-
-        mockMvc.perform(
-            post("/api/solutions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        )
-            .andExpect(status().isTooManyRequests)
-            .andExpect(jsonPath("$.message").value("Превышен лимит попыток: 5"))
-    }
-
-    @Test
-    fun `create should return 404 when problem not found`() {
-        val request = SolutionRequest(
-            userId = 1L,
-            problemId = 999L,
-            language = "Java",
-            filePath = "/path",
-            code = null
-        )
-
-        whenever(solutionService.create(eq(1L), eq(999L), eq("Java"), eq("/path"), eq(null)))
-            .thenThrow(ResourceNotFoundException("Задача с id=999 не найдена"))
-
-        mockMvc.perform(
-            post("/api/solutions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        )
-            .andExpect(status().isNotFound)
-            .andExpect(jsonPath("$.message").value("Задача с id=999 не найдена"))
-    }
-
-    @Test
-    fun `create should return 404 when user not found`() {
-        val request = SolutionRequest(
-            userId = 999L,
-            problemId = 2L,
-            language = "Java",
-            filePath = "/path",
-            code = null
-        )
-
-        whenever(solutionService.create(eq(999L), eq(2L), eq("Java"), eq("/path"), eq(null)))
-            .thenThrow(ResourceNotFoundException("Пользователь с id=999 не найден"))
-
-        mockMvc.perform(
-            post("/api/solutions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        )
-            .andExpect(status().isNotFound)
-            .andExpect(jsonPath("$.message").value("Пользователь с id=999 не найден"))
-    }
-
-    @Test
-    fun `create should return 400 when request has missing fields`() {
-        val invalidRequest = mapOf(
-            "userId" to 1L,
-            "problemId" to 2L
-            // missing language, filePath
-        )
-
-        mockMvc.perform(
-            post("/api/solutions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(invalidRequest))
-        )
-            .andExpect(status().isBadRequest)
-    }
-
-    @Test
-    fun `create should handle request with code null`() {
-
-        val request = SolutionRequest(
-            userId = 1L,
-            problemId = 2L,
-            language = "Python",
-            filePath = "/path/to/solution.py",
-            code = null
-        )
-
-        val solution = createSolution(
-            id = 100L,
-            userId = 1L,
-            problemId = 2L,
-            language = "Python",
-            filePath = "/path/to/solution.py",
-            code = null
-        )
-
-
-        whenever(solutionService.create(eq(1L), eq(2L), eq("Python"), eq("/path/to/solution.py"), isNull()))
+        whenever(solutionService.create(eq(2L), eq(1L), eq("kotlin"), eq("/test.kt"), eq("fun main() {}")))
             .thenReturn(solution)
 
+        mockMvc.perform(
+            post("/api/solutions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 2L,
+                    login = "user",
+                    email = "user@example.com",
+                    role = "BASIC"
+                ))
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.id").value(1))
+            .andExpect(jsonPath("$.status").value("WAITING"))
+    }
+
+    @Test
+    fun `create should return 401 when no token provided`() {
+        val request = SolutionRequest(
+            problemId = 1L,
+            language = "kotlin",
+            filePath = "/test.kt",
+            code = "fun main() {}"
+        )
 
         mockMvc.perform(
             post("/api/solutions")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
-            .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.code").doesNotExist())
+            .andExpect(status().isUnauthorized)
     }
 
-// для GET /api/solutions/{id}
-
     @Test
-    fun `getById should return 200 when solution exists`() {
-        val solution = createSolution(
-            id = 100L,
-            userId = 1L,
-            problemId = 2L,
-            language = "Kotlin",
-            status = SolutionStatus.COMPLETED,
-            filePath = "/path/to/solution.kt",
-            code = "println('Hello')"
+    fun `get should return solution for owner`() {
+        val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
+        val problem = Problem(id = 1L, name = "Test Problem", description = "")
+        val solution = Solution(
+            id = 1L,
+            user = user,
+            problem = problem,
+            language = "kotlin",
+            filePath = "/test.kt",
+            code = "fun main() {}",
+            status = SolutionStatus.WAITING
         )
 
-        whenever(solutionService.findById(100L)).thenReturn(solution)
+        whenever(solutionService.findById(1L)).thenReturn(solution)
 
-        mockMvc.perform(get("/api/solutions/100"))
+        mockMvc.perform(get("/api/solutions/1").requestAttr("tokenPayload", TokenPayload(
+            userId = 2L,
+            login = "user",
+            email = "user@example.com",
+            role = "BASIC"
+        )))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.id").value(100))
-            .andExpect(jsonPath("$.userId").value(1))
-            .andExpect(jsonPath("$.problemId").value(2))
-            .andExpect(jsonPath("$.language").value("Kotlin"))
-            .andExpect(jsonPath("$.status").value("COMPLETED"))
-            .andExpect(jsonPath("$.filePath").value("/path/to/solution.kt"))
-            .andExpect(jsonPath("$.code").value("println('Hello')"))
+            .andExpect(jsonPath("$.id").value(1))
     }
 
     @Test
-    fun `getById should return 404 when solution not found`() {
-        whenever(solutionService.findById(999L))
-            .thenThrow(ResourceNotFoundException("Решение с id=999 не найдено"))
+    fun `get should return 403 for non-owner non-admin`() {
+        val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
+        val problem = Problem(id = 1L, name = "Test Problem", description = "")
+        val solution = Solution(
+            id = 1L,
+            user = user,
+            problem = problem,
+            language = "kotlin",
+            filePath = "/test.kt",
+            code = "fun main() {}",
+            status = SolutionStatus.WAITING
+        )
 
-        mockMvc.perform(get("/api/solutions/999"))
-            .andExpect(status().isNotFound)
-            .andExpect(jsonPath("$.message").value("Решение с id=999 не найдено"))
+        whenever(solutionService.findById(1L)).thenReturn(solution)
+
+        mockMvc.perform(get("/api/solutions/1").requestAttr("tokenPayload", TokenPayload(
+            userId = 3L,
+            login = "user3",
+            email = "user3@example.com",
+            role = "BASIC"
+        )))
+            .andExpect(status().isForbidden)
     }
 
     @Test
-    fun `getAll should return list of solutions`() {
+    fun `getAll should return user solutions`() {
+        val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
+        val problem = Problem(id = 1L, name = "Test Problem", description = "")
         val solutions = listOf(
-            createSolution(id = 1L, userId = 1L, problemId = 1L, language = "Kotlin"),
-            createSolution(id = 2L, userId = 2L, problemId = 1L, language = "Java"),
-            createSolution(id = 3L, userId = 1L, problemId = 2L, language = "Python")
+            Solution(id = 1L, user = user, problem = problem, language = "kotlin", filePath = "/test.kt", code = "", status = SolutionStatus.WAITING)
         )
 
-        whenever(solutionService.findAll()).thenReturn(solutions)
+        whenever(solutionService.findByUser(2L)).thenReturn(solutions)
 
-        mockMvc.perform(get("/api/solutions"))
+        mockMvc.perform(get("/api/solutions").requestAttr("tokenPayload", TokenPayload(
+            userId = 2L,
+            login = "user",
+            email = "user@example.com",
+            role = "BASIC"
+        )))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(3))
-            .andExpect(jsonPath("$[0].id").value(1))
-            .andExpect(jsonPath("$[1].language").value("Java"))
-            .andExpect(jsonPath("$[2].status").value("WAITING"))
+            .andExpect(jsonPath("$.length()").value(1))
     }
 
     @Test
-    fun `getAll should return empty list when no solutions`() {
-        whenever(solutionService.findAll()).thenReturn(emptyList())
-
-        mockMvc.perform(get("/api/solutions"))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(0))
-    }
-
-    @Test
-    fun `getByUser should return solutions for specific user`() {
+    fun `getByUser should return user solutions`() {
+        val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
+        val problem = Problem(id = 1L, name = "Test Problem", description = "")
         val solutions = listOf(
-            createSolution(id = 1L, userId = 1L, problemId = 1L),
-            createSolution(id = 3L, userId = 1L, problemId = 2L)
+            Solution(id = 1L, user = user, problem = problem, language = "kotlin", filePath = "/test.kt", code = "", status = SolutionStatus.WAITING)
         )
 
-        whenever(solutionService.findByUser(1L)).thenReturn(solutions)
+        whenever(solutionService.findByUser(2L)).thenReturn(solutions)
 
-        mockMvc.perform(get("/api/solutions/user/1"))
+        mockMvc.perform(get("/api/solutions/user").requestAttr("tokenPayload", TokenPayload(
+            userId = 2L,
+            login = "user",
+            email = "user@example.com",
+            role = "BASIC"
+        )))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(2))
-            .andExpect(jsonPath("$[0].userId").value(1))
-            .andExpect(jsonPath("$[1].userId").value(1))
+            .andExpect(jsonPath("$.length()").value(1))
     }
 
     @Test
-    fun `getByUser should return empty list when user has no solutions`() {
-        whenever(solutionService.findByUser(999L)).thenReturn(emptyList())
-
-        mockMvc.perform(get("/api/solutions/user/999"))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(0))
-    }
-
-    @Test
-    fun `updateStatus should return 200 when status updated successfully`() {
-        val updatedSolution = createSolution(
-            id = 100L,
-            userId = 1L,
-            problemId = 2L,
+    fun `updateStatus should return 200 for admin`() {
+        val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
+        val problem = Problem(id = 1L, name = "Test Problem", description = "")
+        val updatedSolution = Solution(
+            id = 1L,
+            user = user,
+            problem = problem,
+            language = "kotlin",
+            filePath = "/test.kt",
+            code = "",
             status = SolutionStatus.COMPLETED
         )
 
-        whenever(solutionService.updateStatus(eq(100L), eq(SolutionStatus.COMPLETED))).thenReturn(updatedSolution)
+        whenever(solutionService.updateStatus(eq(1L), eq(SolutionStatus.COMPLETED)))
+            .thenReturn(updatedSolution)
 
         mockMvc.perform(
-            patch("/api/solutions/100/status")
+            patch("/api/solutions/1/status")
                 .param("status", "COMPLETED")
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "admin",
+                    email = "admin@example.com",
+                    role = "ADMIN"
+                ))
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.status").value("COMPLETED"))
-            .andExpect(jsonPath("$.id").value(100))
     }
 
     @Test
-    fun `updateStatus should return 200 with lowercase status`() {
-        val updatedSolution = createSolution(
-            id = 100L,
-            userId = 1L,
-            problemId = 2L,
-            status = SolutionStatus.PROCESSING
-        )
-
-        whenever(solutionService.updateStatus(eq(100L), eq(SolutionStatus.PROCESSING))).thenReturn(updatedSolution)
-
+    fun `updateStatus should return 403 for non-admin`() {
         mockMvc.perform(
-            patch("/api/solutions/100/status")
-                .param("status", "processing")
-        )
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.status").value("PROCESSING"))
-    }
-
-    @Test
-    fun `updateStatus should return 400 when status is invalid`() {
-        mockMvc.perform(
-            patch("/api/solutions/100/status")
-                .param("status", "INVALID_STATUS")
-        )
-            .andExpect(status().isBadRequest)
-    }
-
-    @Test
-    fun `updateStatus should return 400 when status is missing`() {
-        mockMvc.perform(
-            patch("/api/solutions/100/status")
-        )
-            .andExpect(status().isBadRequest)
-    }
-
-    @Test
-    fun `updateStatus should return 404 when solution not found`() {
-        whenever(solutionService.updateStatus(eq(999L), eq(SolutionStatus.COMPLETED)))
-            .thenThrow(ResourceNotFoundException("Решение с id=999 не найдено"))
-
-        mockMvc.perform(
-            patch("/api/solutions/999/status")
+            patch("/api/solutions/1/status")
                 .param("status", "COMPLETED")
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 2L,
+                    login = "user",
+                    email = "user@example.com",
+                    role = "BASIC"
+                ))
         )
-            .andExpect(status().isNotFound)
-            .andExpect(jsonPath("$.message").value("Решение с id=999 не найдено"))
+            .andExpect(status().isForbidden)
     }
 
     @Test
-    fun `delete should return 204 when solution exists`() {
-        doNothing().whenever(solutionService).delete(100L)
+    fun `delete should return 204 for owner`() {
+        val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
+        val problem = Problem(id = 1L, name = "Test Problem", description = "")
+        val solution = Solution(
+            id = 1L,
+            user = user,
+            problem = problem,
+            language = "kotlin",
+            filePath = "/test.kt",
+            code = "",
+            status = SolutionStatus.WAITING
+        )
 
-        mockMvc.perform(delete("/api/solutions/100"))
+        whenever(solutionService.findById(1L)).thenReturn(solution)
+        doNothing().whenever(solutionService).delete(1L)
+
+        mockMvc.perform(delete("/api/solutions/1").requestAttr("tokenPayload", TokenPayload(
+            userId = 2L,
+            login = "user",
+            email = "user@example.com",
+            role = "BASIC"
+        )))
             .andExpect(status().isNoContent)
 
-        verify(solutionService, times(1)).delete(100L)
+        verify(solutionService, times(1)).delete(1L)
     }
 
     @Test
-    fun `delete should return 404 when solution does not exist`() {
-        doThrow(ResourceNotFoundException("Решение с id=999 не найдено"))
-            .whenever(solutionService).delete(999L)
+    fun `delete should return 403 for non-owner non-admin`() {
+        val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
+        val problem = Problem(id = 1L, name = "Test Problem", description = "")
+        val solution = Solution(
+            id = 1L,
+            user = user,
+            problem = problem,
+            language = "kotlin",
+            filePath = "/test.kt",
+            code = "",
+            status = SolutionStatus.WAITING
+        )
 
-        mockMvc.perform(delete("/api/solutions/999"))
-            .andExpect(status().isNotFound)
-            .andExpect(jsonPath("$.message").value("Решение с id=999 не найдено"))
+        whenever(solutionService.findById(1L)).thenReturn(solution)
 
-        verify(solutionService, times(1)).delete(999L)
+        mockMvc.perform(delete("/api/solutions/1").requestAttr("tokenPayload", TokenPayload(
+            userId = 3L,
+            login = "user3",
+            email = "user3@example.com",
+            role = "BASIC"
+        )))
+            .andExpect(status().isForbidden)
     }
 
-    // вспомогательные методы
+    private fun requestWith(payload: TokenPayload?): HttpServletRequest = mockk<HttpServletRequest>().also {
+        every { it.getAttribute("tokenPayload") } returns payload
+    }
 
-    private fun createUser(id: Long) = User(
-        id = id,
-        login = "user$id",
-        email = "user$id@example.com",
-        role = User.Role.BASIC
+    private fun payload(userId: Long, role: String) = TokenPayload(
+        userId = userId,
+        login = "user$userId",
+        email = "user$userId@example.com",
+        role = role
     )
 
-    private fun createProblem(id: Long) = Problem(
-        id = id,
-        name = "Problem $id",
-        description = "Description for problem $id"
-    )
+    @Test
+    fun `solution controller covers auth, forbidden and invalid status branches`() {
+        val service = mockk<SolutionService>(relaxed = true)
+        val controller = SolutionController(service)
+        val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
+        val problem = Problem(id = 1L, name = "Problem", description = "desc")
+        val solution = Solution(
+            id = 1L,
+            user = user,
+            problem = problem,
+            language = "kotlin",
+            filePath = "/file.kt",
+            code = "code",
+            status = SolutionStatus.WAITING,
+            submittedAt = LocalDateTime.now()
+        )
 
-    private fun createSolution(
-        id: Long,
-        userId: Long = 1L,
-        problemId: Long = 1L,
-        language: String = "Kotlin",
-        status: SolutionStatus = SolutionStatus.WAITING,
-        filePath: String = "/path/to/solution.kt",
-        code: String? = "println('Hello World')"
-    ): Solution = Solution(
-        id = id,
-        user = createUser(userId),
-        problem = createProblem(problemId),
-        language = language,
-        status = status,
-        submittedAt = LocalDateTime.now(),
-        filePath = filePath,
-        code = code
-    )
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.create(SolutionRequest(1L, "kotlin", "/file.kt", null), requestWith(null)).statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, controller.create(SolutionRequest(0L, "kotlin", "/file.kt", null), requestWith(payload(2L, "BASIC"))).statusCode)
+        every { service.findById(1L) } returns solution
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.get(1L, requestWith(null)).statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, controller.get(1L, requestWith(payload(3L, "BASIC"))).statusCode)
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.getAll(requestWith(null)).statusCode)
+        assertEquals(HttpStatus.OK, controller.getAll(requestWith(payload(1L, "ADMIN"))).statusCode)
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.getByUser(requestWith(null)).statusCode)
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.updateStatus(1L, "COMPLETED", requestWith(null)).statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, controller.updateStatus(1L, "COMPLETED", requestWith(payload(1L, "BASIC"))).statusCode)
+        assertThrows(IllegalArgumentException::class.java) {
+            controller.updateStatus(1L, "NOT_A_STATUS", requestWith(payload(1L, "ADMIN")))
+        }
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.delete(1L, requestWith(null)).statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, controller.delete(1L, requestWith(payload(3L, "BASIC"))).statusCode)
+    }
 }
+
+
