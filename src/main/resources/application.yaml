@@ -31,8 +31,9 @@ server:
 logging:
   level:
     root: INFO
+    org.springframework: INFO
     com.team.antiplagiat: DEBUG
-    org.springframework.security: TRACE
+    org.springframework.security: DEBUG
   config: classpath:monitoring/logback-spring.xml
 app:
   solution:
