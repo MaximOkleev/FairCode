@@ -7,6 +7,8 @@ import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authentication.BadCredentialsException
+import io.mockk.every
+import io.mockk.mockk
 
 class JsonSecurityHandlersTest {
 
@@ -64,6 +66,34 @@ class JsonSecurityHandlersTest {
         val body = mapper.readTree(resp.contentAsString)
         assertEquals(403, body.get("status").asInt())
         assertEquals("", body.get("path").asText())
+    }
+
+    @Test
+    fun `authentication entry point uses default message when exception message is null`() {
+        val req = MockHttpServletRequest("GET", "/api/protected")
+        val resp = MockHttpServletResponse()
+        val entry = JsonAuthenticationEntryPoint(mapper)
+        val ex = mockk<BadCredentialsException>()
+        every { ex.message } returns null
+
+        entry.commence(req, resp, ex)
+
+        val body = mapper.readTree(resp.contentAsString)
+        assertEquals("Full authentication is required to access this resource", body.get("message").asText())
+    }
+
+    @Test
+    fun `access denied handler uses default message when exception message is null`() {
+        val req = MockHttpServletRequest("GET", "/api/forbidden")
+        val resp = MockHttpServletResponse()
+        val handler = JsonAccessDeniedHandler(mapper)
+        val ex = mockk<AccessDeniedException>()
+        every { ex.message } returns null
+
+        handler.handle(req, resp, ex)
+
+        val body = mapper.readTree(resp.contentAsString)
+        assertEquals("Access is denied", body.get("message").asText())
     }
 }
 

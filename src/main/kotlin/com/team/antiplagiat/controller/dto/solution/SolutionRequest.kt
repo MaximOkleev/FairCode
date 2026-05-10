@@ -3,7 +3,6 @@ package com.team.antiplagiat.controller.dto.solution
 import jakarta.validation.constraints.NotBlank
 
 data class SolutionRequest(
-    val userId: Long,
     val problemId: Long,
     @field:NotBlank(message = "Язык программирования не может быть пустым")
     val language: String,

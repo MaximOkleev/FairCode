@@ -6,6 +6,7 @@ import io.mockk.mockk
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.ConstraintViolation
 import jakarta.validation.ConstraintViolationException
+import org.springframework.dao.DataIntegrityViolationException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
@@ -66,6 +67,50 @@ class RestExceptionHandlerTest {
     }
 
     @Test
+    fun `handleDataIntegrity returns 409 with root cause message`() {
+        val exception = DataIntegrityViolationException(
+            "duplicate email",
+            IllegalStateException("unique constraint violated")
+        )
+
+        val response = handler.handleDataIntegrity(exception, mockRequest)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertNotNull(response.body)
+        val body = response.body as ApiError
+        assertEquals(HttpStatus.CONFLICT.value(), body.status)
+        assertEquals("Conflict", body.error)
+        assertEquals("unique constraint violated", body.message)
+        assertEquals("/api/test", body.path)
+    }
+
+    @Test
+    fun `handleDataIntegrity falls back to exception message when root cause missing`() {
+        val exception = DataIntegrityViolationException("duplicate email")
+
+        val response = handler.handleDataIntegrity(exception, mockRequest)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertNotNull(response.body)
+        val body = response.body as ApiError
+        assertEquals("duplicate email", body.message)
+    }
+
+    @Test
+    fun `handleDataIntegrity uses default conflict message when exception message is absent`() {
+        val exception = mockk<DataIntegrityViolationException>()
+        every { exception.rootCause } returns null
+        every { exception.message } returns null
+
+        val response = handler.handleDataIntegrity(exception, mockRequest)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertNotNull(response.body)
+        val body = response.body as ApiError
+        assertEquals("Conflict", body.message)
+    }
+
+    @Test
     fun `handleAll returns 500 for generic exception`() {
         val exception = Exception("Something went wrong")
 
@@ -108,12 +153,15 @@ class RestExceptionHandlerTest {
 
     @Test
     fun `handleNotFound returns default message when null`() {
-        val exception = ResourceNotFoundException("")
+        val exception = mockk<ResourceNotFoundException>()
+        every { exception.message } returns null
 
         val response = handler.handleNotFound(exception, mockRequest)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertNotNull(response.body)
+        val body = response.body as ApiError
+        assertEquals("Resource not found", body.message)
     }
 
     @Test

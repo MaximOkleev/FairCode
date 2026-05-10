@@ -47,11 +47,12 @@ class RegisterLoginE2ETest {
         val tokenFromLogin = loginBody.get("token")?.asText()
         assertNotNull(tokenFromLogin)
 
-        // access protected resource with token
+        val userId = regBody.get("userId")?.asLong()
+        assertNotNull(userId)
         val headers = HttpHeaders()
         headers.setBearerAuth(tokenFromLogin!!)
         val entity = HttpEntity<Any>(headers)
-        val r = rest.exchange(url("/api/users"), HttpMethod.GET, entity, String::class.java)
+        val r = rest.exchange(url("/api/users/$userId"), HttpMethod.GET, entity, String::class.java)
         assertEquals(HttpStatus.OK, r.statusCode)
     }
 }

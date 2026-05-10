@@ -32,7 +32,7 @@ class JwtFilterIntegrationTest {
     @Test
     fun `protected endpoint requires bearer token and accepts valid token`() {
         // create user in DB
-        val user = User(login = "intuser", email = "int@example.com")
+        val user = User(login = "intuser", email = "int@example.com", role = User.Role.ADMIN)
         val saved = userRepository.save(user)
 
         // generate token using real TokenService

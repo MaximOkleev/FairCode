@@ -2,7 +2,6 @@ package com.team.antiplagiat.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.team.antiplagiat.controller.dto.user.UserRequest
-import com.team.antiplagiat.controller.dto.user.UserResponse
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.service.UserService
 import org.junit.jupiter.api.BeforeEach
@@ -11,10 +10,16 @@ import org.mockito.kotlin.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.http.MediaType
+import org.springframework.http.HttpStatus
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+import io.mockk.every
+import io.mockk.mockk
+import org.junit.jupiter.api.Assertions.assertEquals
+import jakarta.servlet.http.HttpServletRequest
+import com.team.antiplagiat.config.TokenPayload
 
 @WebMvcTest(UserController::class)
 class UserControllerTest {
@@ -34,35 +39,6 @@ class UserControllerTest {
     }
 
     @Test
-    fun `create should return 201 when user created successfully`() {
-        val request = UserRequest(
-            login = "testuser",
-            email = "test@example.com",
-            role = User.Role.BASIC
-        )
-
-        val user = User(
-            id = 1L,
-            login = "testuser",
-            email = "test@example.com",
-            role = User.Role.BASIC
-        )
-
-        whenever(userService.create(any())).thenReturn(user)
-
-        mockMvc.perform(
-            post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        )
-            .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.id").value(1))
-            .andExpect(jsonPath("$.login").value("testuser"))
-            .andExpect(jsonPath("$.email").value("test@example.com"))
-            .andExpect(jsonPath("$.role").value("BASIC"))
-    }
-
-    @Test
     fun `getById should return 200 when user exists`() {
         val user = User(
             id = 1L,
@@ -73,7 +49,12 @@ class UserControllerTest {
 
         whenever(userService.findById(1L)).thenReturn(user)
 
-        mockMvc.perform(get("/api/users/1"))
+        mockMvc.perform(get("/api/users/1").requestAttr("tokenPayload", TokenPayload(
+            userId = 1L,
+            login = "testuser",
+            email = "test@example.com",
+            role = "BASIC"
+        )))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.login").value("testuser"))
@@ -85,7 +66,12 @@ class UserControllerTest {
     fun `getById should return 404 when user not found`() {
         whenever(userService.findById(999L)).thenReturn(null)
 
-        mockMvc.perform(get("/api/users/999"))
+        mockMvc.perform(get("/api/users/999").requestAttr("tokenPayload", TokenPayload(
+            userId = 1L,
+            login = "admin",
+            email = "admin@example.com",
+            role = "ADMIN"
+        )))
             .andExpect(status().isNotFound)
     }
 
@@ -98,7 +84,12 @@ class UserControllerTest {
 
         whenever(userService.findAll()).thenReturn(users)
 
-        mockMvc.perform(get("/api/users"))
+        mockMvc.perform(get("/api/users").requestAttr("tokenPayload", TokenPayload(
+            userId = 1L,
+            login = "admin",
+            email = "admin@example.com",
+            role = "ADMIN"
+        )))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[0].login").value("user1"))
@@ -106,10 +97,21 @@ class UserControllerTest {
     }
 
     @Test
+    fun `getAll should return 401 when no token provided`() {
+        mockMvc.perform(get("/api/users"))
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
     fun `getAll should return empty list when no users`() {
         whenever(userService.findAll()).thenReturn(emptyList())
 
-        mockMvc.perform(get("/api/users"))
+        mockMvc.perform(get("/api/users").requestAttr("tokenPayload", TokenPayload(
+            userId = 1L,
+            login = "admin",
+            email = "admin@example.com",
+            role = "ADMIN"
+        )))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(0))
     }
@@ -135,6 +137,12 @@ class UserControllerTest {
             put("/api/users/1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "updateduser",
+                    email = "updated@example.com",
+                    role = "ADMIN"
+                ))
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").value(1))
@@ -156,6 +164,12 @@ class UserControllerTest {
             put("/api/users/999")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "admin",
+                    email = "admin@example.com",
+                    role = "ADMIN"
+                ))
         )
             .andExpect(status().isNotFound)
     }
@@ -164,10 +178,39 @@ class UserControllerTest {
     fun `delete should return 204 when user exists`() {
         doNothing().whenever(userService).delete(1L)
 
-        mockMvc.perform(delete("/api/users/1"))
+        mockMvc.perform(delete("/api/users/1").requestAttr("tokenPayload", TokenPayload(
+            userId = 1L,
+            login = "testuser",
+            email = "test@example.com",
+            role = "BASIC"
+        )))
             .andExpect(status().isNoContent)
 
         verify(userService, times(1)).delete(1L)
     }
-}
 
+    private fun requestWith(payload: TokenPayload?): HttpServletRequest = mockk<HttpServletRequest>().also {
+        every { it.getAttribute("tokenPayload") } returns payload
+    }
+
+    private fun payload(userId: Long, role: String) = TokenPayload(
+        userId = userId,
+        login = "user$userId",
+        email = "user$userId@example.com",
+        role = role
+    )
+
+    @Test
+    fun `user controller covers unauthorized and forbidden branches`() {
+        val service = mockk<UserService>(relaxed = true)
+        val controller = UserController(service)
+
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.get(1L, requestWith(null)).statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, controller.get(2L, requestWith(payload(1L, "BASIC"))).statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, controller.getAll(requestWith(payload(1L, "BASIC"))).statusCode)
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.update(1L, UserRequest("x", "x@e.com", User.Role.BASIC), requestWith(null)).statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, controller.update(2L, UserRequest("x", "x@e.com", User.Role.BASIC), requestWith(payload(1L, "BASIC"))).statusCode)
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.delete(1L, requestWith(null)).statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, controller.delete(2L, requestWith(payload(1L, "BASIC"))).statusCode)
+    }
+}

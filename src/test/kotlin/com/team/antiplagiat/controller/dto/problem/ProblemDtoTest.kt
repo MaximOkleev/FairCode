@@ -106,5 +106,30 @@ class ProblemDtoTest {
         assertEquals("Root Fibonacci", response.name)
         assertNull(response.description)
     }
+
+    @Test
+    fun `problem dto mapping`() {
+        val problem = Problem(id = 7L, name = "P", description = "D")
+        val resp = RootProblemResponse.fromEntity(problem)
+        assertEquals(7L, resp.id)
+        assertEquals("P", resp.name)
+
+        val req = RootProblemRequest(name = "P2", description = "D2")
+        val ent = req.toRootEntity()
+        assertEquals("P2", ent.name)
+        assertEquals("D2", ent.description)
+    }
+
+    @Test
+    fun `problem dto round trip`() {
+        val request = RootProblemRequest(name = "Problem", description = null)
+        val entity = request.toRootEntity()
+        val response = RootProblemResponse.fromEntity(Problem(id = 10L, name = entity.name, description = entity.description))
+
+        assertEquals("Problem", entity.name)
+        assertNull(entity.description)
+        assertEquals(10L, response.id)
+        assertEquals("Problem", response.name)
+    }
 }
 

@@ -35,5 +35,18 @@ class SecurityConfigUnitTest {
         val userDetails = cfg.userDetailsService(encoder, dbService)
         assertSame(dbService, userDetails)
     }
+
+    @Test
+    fun `userDetailsService falls back to database when provider is unknown`() {
+        val env = mockk<Environment>()
+        every { env.getProperty("app.security.user-provider", "database") } returns "unknown"
+
+        val cfg = SecurityConfig(env)
+        val encoder = cfg.passwordEncoder()
+        val dbService = mockk<DatabaseUserDetailsService>()
+        val userDetails = cfg.userDetailsService(encoder, dbService)
+
+        assertSame(dbService, userDetails)
+    }
 }
 

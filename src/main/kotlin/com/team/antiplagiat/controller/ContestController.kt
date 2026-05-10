@@ -1,11 +1,13 @@
 package com.team.antiplagiat.controller
 
+import com.team.antiplagiat.config.TokenPayloadExtractor
 import com.team.antiplagiat.controller.dto.contest.ContestRequest
 import com.team.antiplagiat.controller.dto.contest.ContestResponse
 import com.team.antiplagiat.controller.dto.contest.toEntity
 import com.team.antiplagiat.service.ContestService
 import com.team.antiplagiat.service.UserService
 import io.github.oshai.kotlinlogging.KotlinLogging
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -20,12 +22,18 @@ class ContestController(
 ) {
 
     @PostMapping
-    fun create(@RequestBody request: ContestRequest): ResponseEntity<ContestResponse> {
-        logger.info { "POST /api/contests - создание контеста от администратора ${request.adminId}" }
+    fun create(
+        @RequestBody request: ContestRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<ContestResponse> {
+        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+        logger.info { "POST /api/contests - создание контеста от администратора ${payload.userId}" }
         logger.debug { "Request: $request" }
 
-        val admin = userService.findById(request.adminId) ?: run {
-            logger.warn { "Администратор ${request.adminId} не найден" }
+        val admin = userService.findById(payload.userId) ?: run {
+            logger.warn { "Администратор ${payload.userId} не найден" }
             return ResponseEntity.badRequest().build()
         }
 
@@ -40,8 +48,14 @@ class ContestController(
     }
 
     @GetMapping("/{id}")
-    fun get(@PathVariable id: Long): ResponseEntity<ContestResponse> {
-        logger.debug { "GET /api/contests/$id" }
+    fun get(
+        @PathVariable id: Long,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<ContestResponse> {
+        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+        logger.debug { "GET /api/contests/$id - пользователь ${payload.userId}" }
         val contest = contestService.findById(id) ?: run {
             logger.debug { "Контест $id не найден" }
             return ResponseEntity.notFound().build()
@@ -51,28 +65,38 @@ class ContestController(
     }
 
     @GetMapping
-    fun getAll(): List<ContestResponse> {
-        logger.debug { "GET /api/contests - получение всех контестов" }
+    fun getAll(httpRequest: HttpServletRequest): ResponseEntity<List<ContestResponse>> {
+        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+        logger.debug { "GET /api/contests - пользователь ${payload.userId}" }
         val contests = contestService.findAll()
         logger.debug { "Найдено контестов: ${contests.size}" }
-        return contests.map { ContestResponse.fromEntity(it) }
+        return ResponseEntity.ok(contests.map { ContestResponse.fromEntity(it) })
     }
 
-    @GetMapping("/by-admin/{adminId}")
-    fun getByAdmin(@PathVariable adminId: Long): List<ContestResponse> {
-        logger.debug { "GET /api/contests/by-admin/$adminId" }
-        val contests = contestService.findByAdmin(adminId)
+    @GetMapping("/by-admin")
+    fun getByAdmin(httpRequest: HttpServletRequest): ResponseEntity<List<ContestResponse>> {
+        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+        logger.info { "GET /api/contests/by-admin - фильтр за администратором ${payload.userId}" }
+        val contests = contestService.findByAdmin(payload.userId)
         logger.debug { "Найдено контестов для администратора: ${contests.size}" }
-        return contests.map { ContestResponse.fromEntity(it) }
+        return ResponseEntity.ok(contests.map { ContestResponse.fromEntity(it) })
     }
 
     @PutMapping("/{id}")
     fun update(
         @PathVariable id: Long,
         @RequestParam name: String?,
-        @RequestParam duration: Long?
+        @RequestParam duration: Long?,
+        httpRequest: HttpServletRequest
     ): ResponseEntity<ContestResponse> {
-        logger.info { "PUT /api/contests/$id - обновление: name=$name, duration=$duration" }
+        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+        logger.info { "PUT /api/contests/$id - обновление от пользователя ${payload.userId}: name=$name, duration=$duration" }
         logger.debug { "Параметры: id=$id, name=$name, duration=$duration" }
 
         val updated = contestService.update(id, name, duration) ?: run {
@@ -85,8 +109,14 @@ class ContestController(
     }
 
     @DeleteMapping("/{id}")
-    fun delete(@PathVariable id: Long): ResponseEntity<Void> {
-        logger.info { "DELETE /api/contests/$id" }
+    fun delete(
+        @PathVariable id: Long,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<Void> {
+        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+        logger.info { "DELETE /api/contests/$id - удаление от пользователя ${payload.userId}" }
         logger.debug { "Удаление контеста" }
         contestService.delete(id)
         logger.info { "Контест удален: id=$id" }
