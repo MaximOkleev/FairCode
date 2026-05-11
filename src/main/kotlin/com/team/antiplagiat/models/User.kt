@@ -22,6 +22,9 @@ class User(
     @Column(nullable = false, unique = true)
     var email: String = "",
 
+    @Column(name = "email_verified", nullable = false)
+    var emailVerified: Boolean = false,
+
     @Column(
         nullable = false,
         columnDefinition = "VARCHAR(255) DEFAULT '$2a\$10\$fIZ0W0dNFtI5QZbJvY1I6OZzg4IJs6Uo2dLcXrOh/ZLmZrSv5fYO2'"

@@ -3,5 +3,6 @@ package com.team.antiplagiat.controller.dto.register
 data class RegisterResponse(
     val userId: Long,
     val email: String,
-    val token: String
+    val message: String = "Пользователь зарегистрирован. Проверьте почту для подтверждения email",
+    val emailVerificationRequired: Boolean = true
 )

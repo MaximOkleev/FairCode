@@ -13,17 +13,6 @@ spring:
       ddl-auto: update
     show-sql: true
     defer-datasource-initialization: true
-  mail:
-    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
-    port: ${SPRING_MAIL_PORT:587}
-    username: ${SPRING_MAIL_USERNAME:your-email@gmail.com}
-    password: ${SPRING_MAIL_PASSWORD:your-app-password}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
 server:
   error:
     include-message: always
@@ -40,6 +29,10 @@ app:
     max-attempts: 50
   contest:
     max-duration-hours: 5
+  resend:
+    api-key: ${RESEND_API_KEY:re_Q346kz3j_DDbKLAeXq8QfJcgSEhTSEVdH}
+    from: ${RESEND_FROM_EMAIL:onboarding@resend.dev}
+    base-url: ${APP_BASE_URL:http://localhost:8080/api}
   security:
     enabled: ${APP_SECURITY_ENABLED:false}
     user-provider: ${APP_SECURITY_USER_PROVIDER:database}
