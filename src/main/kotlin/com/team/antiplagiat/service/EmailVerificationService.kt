@@ -1,6 +1,7 @@
 package com.team.antiplagiat.service
 
 import com.team.antiplagiat.config.ResendProperties
+import com.team.antiplagiat.config.TokenService
 import com.team.antiplagiat.models.EmailVerificationToken
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.repository.EmailVerificationTokenRepository
@@ -19,6 +20,7 @@ class EmailVerificationService(
     private val tokenRepository: EmailVerificationTokenRepository,
     private val resendService: ResendService,
     private val properties: ResendProperties,
+    private val tokenService: TokenService
 ) {
 
     companion object {
@@ -117,5 +119,9 @@ class EmailVerificationService(
     fun getUserById(userId: Long): User {
         return userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("User not found with id: $userId") }
+    }
+
+    fun generateToken(user: User): String {
+        return tokenService.generateToken(user)
     }
 }

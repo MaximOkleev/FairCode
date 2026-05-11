@@ -6,6 +6,7 @@ import com.team.antiplagiat.service.RegisterService
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 
@@ -14,7 +15,12 @@ class RegisterControllerTest {
     @Test
     fun `register returns created status and response on success`() {
         val registerService = mockk<RegisterService>()
-        val response = RegisterResponse(userId = 123L, email = "test@example.com", token = "token123")
+        val response = RegisterResponse(
+            userId = 123L,
+            email = "test@example.com",
+            message = "Пользователь зарегистрирован. Проверьте почту для подтверждения email",
+            emailVerificationRequired = true
+        )
         every { registerService.register(any()) } returns response
 
         val controller = RegisterController(registerService)
@@ -23,6 +29,7 @@ class RegisterControllerTest {
 
         assertEquals(HttpStatus.CREATED, result.statusCode)
         assertEquals(response, result.body)
+        assertTrue(result.body?.emailVerificationRequired ?: false)
     }
 
     @Test
@@ -38,15 +45,14 @@ class RegisterControllerTest {
     }
 
     @Test
-    fun `register returns internal server error on unexpected exception`() {
+    fun `register returns too many requests on rate limit`() {
         val registerService = mockk<RegisterService>()
-        every { registerService.register(any()) } throws RuntimeException("Database error")
+        every { registerService.register(any()) } throws IllegalStateException("Too many requests. Try again later")
 
         val controller = RegisterController(registerService)
         val request = RegisterRequest(email = "test@example.com", password = "password123")
         val result = controller.register(request)
 
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, result.statusCode)
+        assertEquals(429, result.statusCodeValue)
     }
 }
-

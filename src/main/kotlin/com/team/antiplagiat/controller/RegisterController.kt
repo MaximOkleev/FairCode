@@ -34,6 +34,16 @@ class RegisterController(private val registerService: RegisterService) {
         } catch (e: IllegalArgumentException) {
             logger.warn { "Регистрация отклонена: ${e.message}" }
             ResponseEntity.badRequest().build()
+        } catch (e: IllegalStateException) {
+            logger.warn { "Слишком частая попытка отправки письма: ${e.message}" }
+            ResponseEntity.status(429).body(
+                RegisterResponse(
+                    userId = 0,
+                    email = request.email,
+                    message = e.message ?: "Too many requests. Try again later",
+                    emailVerificationRequired = true
+                )
+            )
         } catch (e: Exception) {
             logger.error { "Ошибка при регистрации пользователя ${request.email}: ${e.message}" }
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
