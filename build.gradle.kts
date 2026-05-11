@@ -4,6 +4,7 @@ plugins {
 	id("org.springframework.boot") version "3.5.10"
 	id("io.spring.dependency-management") version "1.1.7"
 	jacoco
+    kotlin("plugin.jpa") version "2.3.0"
 }
 
 group = "com.team"
@@ -46,6 +47,7 @@ dependencies {
 	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 	implementation("io.micrometer:micrometer-core")
 	implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation(kotlin("stdlib"))
 
 }
 

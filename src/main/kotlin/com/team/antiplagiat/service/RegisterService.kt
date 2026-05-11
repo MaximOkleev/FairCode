@@ -18,7 +18,7 @@ class RegisterService(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
     meterRegistry: MeterRegistry,
-    private val tokenService: com.team.antiplagiat.config.TokenService
+    private val emailVerificationService: EmailVerificationService
 ) {
 
     private val registrationCounter: Counter = Counter.builder("registration.success")
@@ -56,8 +56,14 @@ class RegisterService(
         logger.info { "Регистрация успешна: id=${saved.id}, email=${saved.email}" }
 
         registrationCounter.increment()
+        logger.info { "Отправляем письмо верификации на ${saved.email}" }
+        emailVerificationService.sendVerification(saved.email)
 
-        val token = tokenService.generateToken(saved)
-        return RegisterResponse(userId = saved.id, email = saved.email, token = token)
+        return RegisterResponse(
+            userId = saved.id,
+            email = saved.email,
+            message = "Пользователь зарегистрирован. Проверьте почту для подтверждения email",
+            emailVerificationRequired = true
+        )
     }
 }

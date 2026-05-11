@@ -44,8 +44,8 @@ services: #раздел с описанием сервисов (контейне
     restart: unless-stopped
 
     depends_on:
-      - postgres
-      - mailhog
+      postgres:
+        condition: service_healthy
 
     ports:
       - "8080:8080"
@@ -63,12 +63,6 @@ services: #раздел с описанием сервисов (контейне
       SPRING_DATASOURCE_PASSWORD: postgres #пароль БД
 
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
-
-      # Mail
-      SPRING_MAIL_HOST: mailhog
-      SPRING_MAIL_PORT: 1025
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "false"
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "false"
 
       # Spring Security Configuration
       # По умолчанию Security ОТКЛЮЧЕНА для docker (dev mode)
@@ -143,18 +137,7 @@ services: #раздел с описанием сервисов (контейне
       - grafana_data:/var/lib/grafana
 
   # MailHog - локальный SMTP сервер для тестирования email
-  # Захватывает все отправленные email без реальной отправки
-  # Не требует аутентификации
-  # SMTP порт: 1025, Web UI для просмотра email: 8025
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: antiplagiat-mailhog
-
-    restart: unless-stopped
-
-    ports:
-      - "1025:1025"  # SMTP port
-      - "8025:8025"  # Web UI port
+  # (Удален - используется Resend API для отправки email)
 
 # Объявление именованных томов для персистентного хранения данных
 # postgres_data: данные PostgreSQL
