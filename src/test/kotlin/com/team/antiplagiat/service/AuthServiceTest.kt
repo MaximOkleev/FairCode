@@ -17,7 +17,7 @@ class AuthServiceTest {
         val encoder = mockk<PasswordEncoder>()
         val tokenService = mockk<TokenService>()
 
-        val user = User(id = 5, login = "login", email = "a@b")
+        val user = User(id = 5, login = "login", email = "a@b", emailVerified = true)
         every { repo.findByLogin("login") } returns user
         every { encoder.matches("pass", user.passwordHash) } returns true
         every { tokenService.generateToken(user) } returns "tok"

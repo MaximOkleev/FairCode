@@ -32,11 +32,16 @@ class RegisterDtoTest {
 
     @Test
     fun `register response keeps fields`() {
-        val response = RegisterResponse(userId = 42L, email = "user@example.com", token = "jwt-token")
+        val response = RegisterResponse(
+            userId = 42L,
+            email = "user@example.com",
+            message = "Пользователь зарегистрирован. Проверьте почту для подтверждения email",
+            emailVerificationRequired = true
+        )
 
         assertEquals(42L, response.userId)
         assertEquals("user@example.com", response.email)
-        assertEquals("jwt-token", response.token)
+        assertTrue(response.emailVerificationRequired)
     }
 }
 
