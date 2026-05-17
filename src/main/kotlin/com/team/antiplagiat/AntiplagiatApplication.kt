@@ -3,10 +3,12 @@ package com.team.antiplagiat
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.scheduling.annotation.EnableAsync
 
 private val logger = KotlinLogging.logger {}
 
 @SpringBootApplication
+@EnableAsync
 
 class AntiplagiatApplication
 

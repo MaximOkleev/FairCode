@@ -52,6 +52,20 @@ class RestExceptionHandler {
     }
 
     @Suppress("UNUSED")
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun handleIllegalArgument(ex: IllegalArgumentException, req: HttpServletRequest): ResponseEntity<Any> {
+        val body = ApiError(
+            timestamp = Instant.now().toString(),
+            status = HttpStatus.BAD_REQUEST.value(),
+            error = "Bad Request",
+            message = (ex.message ?: "Invalid request"),
+            path = req.requestURI
+        )
+        logger.warn { "Invalid request=${req.method} ${req.requestURI}: ${ex.message}" }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body)
+    }
+
+    @Suppress("UNUSED")
     @ExceptionHandler(ConstraintViolationException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun handleConstraintViolation(ex: ConstraintViolationException, req: HttpServletRequest): ResponseEntity<Any> {

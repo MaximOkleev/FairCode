@@ -64,3 +64,37 @@ CREATE TABLE IF NOT EXISTS solutions (
     code TEXT,
     created_at TIMESTAMP NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS plagiarism_check_runs (
+    id BIGSERIAL PRIMARY KEY,
+    threshold DOUBLE PRECISION NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    checked_solutions INT NOT NULL DEFAULT 0,
+    compared_pairs INT NOT NULL DEFAULT 0,
+    matches INT NOT NULL DEFAULT 0,
+    groups INT NOT NULL DEFAULT 0,
+    error_message TEXT,
+    created_at TIMESTAMP NOT NULL,
+    started_at TIMESTAMP,
+    finished_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_plagiarism_check_runs_status_finished_at
+    ON plagiarism_check_runs(status, finished_at);
+
+CREATE TABLE IF NOT EXISTS plagiarism_matches (
+    id BIGSERIAL PRIMARY KEY,
+    check_run_id BIGINT NOT NULL REFERENCES plagiarism_check_runs(id) ON DELETE CASCADE,
+    first_solution_id BIGINT NOT NULL REFERENCES solutions(id) ON DELETE CASCADE,
+    second_solution_id BIGINT NOT NULL REFERENCES solutions(id) ON DELETE CASCADE,
+    similarity DOUBLE PRECISION NOT NULL,
+    threshold DOUBLE PRECISION NOT NULL,
+    detected_at TIMESTAMP NOT NULL,
+    CONSTRAINT uk_plagiarism_matches_run_solution_pair UNIQUE (check_run_id, first_solution_id, second_solution_id),
+    CONSTRAINT chk_plagiarism_matches_order CHECK (first_solution_id < second_solution_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_plagiarism_matches_check_run ON plagiarism_matches(check_run_id);
+CREATE INDEX IF NOT EXISTS idx_plagiarism_matches_first_solution ON plagiarism_matches(first_solution_id);
+CREATE INDEX IF NOT EXISTS idx_plagiarism_matches_second_solution ON plagiarism_matches(second_solution_id);
+CREATE INDEX IF NOT EXISTS idx_plagiarism_matches_detected_at ON plagiarism_matches(detected_at);
