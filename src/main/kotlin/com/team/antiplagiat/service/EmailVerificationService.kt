@@ -7,6 +7,7 @@ import com.team.antiplagiat.models.User
 import com.team.antiplagiat.repository.EmailVerificationTokenRepository
 import com.team.antiplagiat.repository.UserRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -20,7 +21,8 @@ class EmailVerificationService(
     private val tokenRepository: EmailVerificationTokenRepository,
     private val resendService: ResendService,
     private val properties: ResendProperties,
-    private val tokenService: TokenService
+    private val tokenService: TokenService,
+    private val meterRegistry: MeterRegistry
 ) {
 
     companion object {
@@ -34,11 +36,13 @@ class EmailVerificationService(
         val user = userRepository.findByEmail(email)
             ?: run {
                 logger.warn { "Пользователь с email $email не найден" }
+                meterRegistry.counter("email.verification.user_not_found").increment()
                 return
             }
 
         if (user.emailVerified) {
             logger.info { "Email уже подтверждён для пользователя ${user.id}" }
+            meterRegistry.counter("email.verification.skipped.already_verified").increment()
             return
         }
 
@@ -47,6 +51,7 @@ class EmailVerificationService(
             val minutesSinceCreation = ChronoUnit.MINUTES.between(lastToken.createdAt, Instant.now())
             if (minutesSinceCreation < RATE_LIMIT_MINUTES) {
                 logger.warn { "Слишком частая попытка отправки письма для ${user.email}. Осталось ждать ${RATE_LIMIT_MINUTES - minutesSinceCreation} минут" }
+                meterRegistry.counter("email.verification.rate_limited").increment()
                 throw IllegalStateException("Too many requests. Try again later")
             }
         }
@@ -57,6 +62,7 @@ class EmailVerificationService(
         val rawToken = TokenUtils.generateToken()
         val tokenHash = TokenUtils.sha256(rawToken)
         logger.debug { "Сгенерирован новый токен верификации" }
+        meterRegistry.counter("email.verification.token.generated").increment()
 
         tokenRepository.save(
             EmailVerificationToken(
@@ -81,6 +87,7 @@ class EmailVerificationService(
                 <p>Ссылка действительна ${TOKEN_VALIDITY_MINUTES} минут</p>
             """.trimIndent()
         )
+        meterRegistry.counter("email.verification.sent").increment()
         logger.info { "Письмо верификации успешно отправлено на ${user.email}" }
     }
 
@@ -92,16 +99,19 @@ class EmailVerificationService(
         val token = tokenRepository.findByTokenHash(tokenHash)
             ?: run {
                 logger.warn { "Токен не найден в базе данных" }
+                meterRegistry.counter("email.verification.failed.invalid_token").increment()
                 throw IllegalArgumentException("Invalid token")
             }
 
         if (token.usedAt != null) {
             logger.warn { "Токен уже использован" }
+            meterRegistry.counter("email.verification.failed.used_token").increment()
             throw IllegalStateException("Token already used")
         }
 
         if (token.expiresAt.isBefore(Instant.now())) {
             logger.warn { "Токен истёк" }
+            meterRegistry.counter("email.verification.failed.expired_token").increment()
             throw IllegalStateException("Token expired")
         }
 
@@ -110,6 +120,7 @@ class EmailVerificationService(
 
         token.usedAt = Instant.now()
         tokenRepository.save(token)
+        meterRegistry.counter("email.verification.success").increment()
         logger.info { "Email успешно верифицирован для пользователя ${token.userId}" }
 
         return token.userId

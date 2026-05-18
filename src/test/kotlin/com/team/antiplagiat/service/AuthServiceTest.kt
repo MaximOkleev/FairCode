@@ -3,6 +3,7 @@ package com.team.antiplagiat.service
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.repository.UserRepository
 import com.team.antiplagiat.config.TokenService
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
@@ -22,7 +23,7 @@ class AuthServiceTest {
         every { encoder.matches("pass", user.passwordHash) } returns true
         every { tokenService.generateToken(user) } returns "tok"
 
-        val service = AuthService(repo, encoder, tokenService)
+        val service = AuthService(repo, encoder, tokenService, SimpleMeterRegistry())
         val token = service.authenticate("login", "pass")
         assertEquals("tok", token)
     }
@@ -33,7 +34,7 @@ class AuthServiceTest {
         val encoder = mockk<PasswordEncoder>()
         val tokenService = mockk<TokenService>()
         every { repo.findByLogin(any()) } returns null
-        val service = AuthService(repo, encoder, tokenService)
+        val service = AuthService(repo, encoder, tokenService, SimpleMeterRegistry())
         assertThrows(IllegalArgumentException::class.java) { service.authenticate("no", "p") }
     }
 
@@ -45,8 +46,7 @@ class AuthServiceTest {
         val user = User(id = 1, login = "l", email = "e")
         every { repo.findByLogin("l") } returns user
         every { encoder.matches("bad", user.passwordHash) } returns false
-        val service = AuthService(repo, encoder, tokenService)
+        val service = AuthService(repo, encoder, tokenService, SimpleMeterRegistry())
         assertThrows(IllegalArgumentException::class.java) { service.authenticate("l", "bad") }
     }
 }
-

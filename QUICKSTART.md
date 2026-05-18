@@ -27,6 +27,13 @@ docker compose up -d
 3. Выбрать файл: `monitoring/grafana-dashboard.json`
 4. Нажать **Load** → **Import** ✅
 
+### Шаг 3.1: Импортировать RED Dashboard
+
+1. Снова открыть **Dashboards → Import**
+2. Нажать **Upload JSON file**
+3. Выбрать файл: `monitoring/grafana-red-dashboard.json`
+4. Нажать **Load** → **Import** 
+
 ### Шаг 4: Посмотреть метрики
 
 1. В Grafana откроется дашборд "AntiPlagiat Business Metrics"
@@ -36,6 +43,13 @@ docker compose up -d
    - Количество контестов
    - Статистика регистрации
    - И еще 7 графиков...
+
+3. Для технического мониторинга откройте дашборд "AntiPlagiat API RED Dashboard"
+4. Там должны быть графики:
+   - RPS
+   - 4xx / 5xx ошибки
+   - Доля ошибок
+   - Среднее время ответа и p95
 
 ---
 

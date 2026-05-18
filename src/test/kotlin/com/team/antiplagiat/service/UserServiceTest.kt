@@ -2,6 +2,7 @@ package com.team.antiplagiat.service
 
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.repository.UserRepository
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.*
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
@@ -17,7 +18,7 @@ class UserServiceTest {
     @BeforeEach
     fun setUp() {
         userRepository = mockk()
-        userService = UserService(userRepository)
+        userService = UserService(userRepository, SimpleMeterRegistry())
     }
 
     @AfterEach
@@ -183,4 +184,3 @@ class UserServiceTest {
         assertEquals("test@example.com", result?.email)
     }
 }
-
