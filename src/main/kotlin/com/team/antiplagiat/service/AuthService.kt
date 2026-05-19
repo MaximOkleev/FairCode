@@ -15,6 +15,7 @@ class AuthService(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
     private val tokenService: TokenService,
+    private val securityAlertService: SecurityAlertService,
     private val meterRegistry: MeterRegistry
 ) {
     fun authenticate(login: String, password: String): String {
@@ -47,6 +48,13 @@ class AuthService(
 
         logger.info { "Пользователь успешно аутентифицирован: $login" }
         meterRegistry.counter("auth.login.success").increment()
+        try {
+            securityAlertService.sendLoginAlert(user)
+            meterRegistry.counter("auth.login.security_alert.sent").increment()
+        } catch (e: Exception) {
+            logger.error(e) { "Не удалось отправить security alert для пользователя ${user.id}" }
+            meterRegistry.counter("auth.login.security_alert.failed").increment()
+        }
         return tokenService.generateToken(user)
     }
 }
