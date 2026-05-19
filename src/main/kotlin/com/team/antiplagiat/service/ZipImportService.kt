@@ -52,77 +52,69 @@ class ZipImportService(
                         if (fileEntriesSeen > maxFiles) {
                             skippedFiles++
                             errors += "Превышено максимальное количество файлов в архиве: $maxFiles"
-                            continue
+                        } else {
+                            val parts = normalizeEntryPath(rawPath)
+                            if (parts == null) {
+                                skippedFiles++
+                                errors += "Опасный или некорректный путь пропущен: $rawPath"
+                            } else {
+                                val relativeParts = if (parts.firstOrNull() == "Solutions") parts.drop(1) else parts
+                                if (relativeParts.size < 2) {
+                                    skippedFiles++
+                                } else {
+                                    val problemName = relativeParts.first()
+                                    val fileName = relativeParts.last()
+
+                                    if (!isAllowedSourceFile(fileName)) {
+                                        skippedFiles++
+                                        errors += "Неподдерживаемое расширение файла пропущено: $fileName"
+                                    } else if (entry.size >= 0 && entry.size > maxEntrySizeBytes) {
+                                        skippedFiles++
+                                        errors += "Файл слишком большой и был пропущен: $rawPath (лимит ${zipImportProperties.maxEntrySize.toMegabytes()}MB)"
+                                    } else {
+                                        val content = readEntryText(zip, maxEntrySizeBytes)
+                                        if (content == null) {
+                                            skippedFiles++
+                                            errors += "Файл слишком большой и был пропущен: $rawPath (лимит ${zipImportProperties.maxEntrySize.toMegabytes()}MB)"
+                                        } else {
+                                            // Извлекаем login из имени файла (без расширения)
+                                            val login = fileName.substringBeforeLast(".")
+                                            val user = userRepository.findByLogin(login)
+                                            if (user == null) {
+                                                skippedFiles++
+                                                usersNotFound++
+                                                errors += "Пользователь с логином '$login' не найден в системе (файл: $fileName)"
+                                            } else {
+                                                usersMatched++
+
+                                                val problem = problemRepository.findFirstByName(problemName)
+                                                    ?: problemRepository.save(
+                                                        Problem(
+                                                            name = problemName,
+                                                            description = "Imported from ZIP"
+                                                        )
+                                                    ).also {
+                                                        problemsCreated++
+                                                    }
+
+                                                val solution = Solution(
+                                                    user = user,
+                                                    problem = problem,
+                                                    language = detectLanguage(fileName),
+                                                    status = SolutionStatus.WAITING,
+                                                    submittedAt = LocalDateTime.now(),
+                                                    filePath = relativeParts.joinToString("/"),
+                                                    code = content
+                                                )
+
+                                                solutionRepository.save(solution)
+                                                solutionsCreated++
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
-
-                        val parts = normalizeEntryPath(rawPath)
-                        if (parts == null) {
-                            skippedFiles++
-                            errors += "Опасный или некорректный путь пропущен: $rawPath"
-                            continue
-                        }
-
-                        val relativeParts = if (parts.firstOrNull() == "Solutions") parts.drop(1) else parts
-                        if (relativeParts.size < 2) {
-                            skippedFiles++
-                            continue
-                        }
-
-                         val problemName = relativeParts.first()
-                         val fileName = relativeParts.last()
-
-                         if (!isAllowedSourceFile(fileName)) {
-                             skippedFiles++
-                             errors += "Неподдерживаемое расширение файла пропущено: $fileName"
-                             continue
-                         }
-
-                         if (entry.size >= 0 && entry.size > maxEntrySizeBytes) {
-                             skippedFiles++
-                             errors += "Файл слишком большой и был пропущен: $rawPath (лимит ${zipImportProperties.maxEntrySize.toMegabytes()}MB)"
-                             continue
-                         }
-
-                         val content = readEntryText(zip, maxEntrySizeBytes)
-                         if (content == null) {
-                             skippedFiles++
-                             errors += "Файл слишком большой и был пропущен: $rawPath (лимит ${zipImportProperties.maxEntrySize.toMegabytes()}MB)"
-                             continue
-                         }
-
-                          // Извлекаем login из имени файла (без расширения)
-                          val login = fileName.substringBeforeLast(".")
-                          val user = userRepository.findByLogin(login)
-                          if (user == null) {
-                              skippedFiles++
-                              usersNotFound++
-                              errors += "Пользователь с логином '$login' не найден в системе (файл: $fileName)"
-                              continue
-                          }
-                          usersMatched++
-
-                         val problem = problemRepository.findByName(problemName)
-                             ?: problemRepository.save(
-                                 Problem(
-                                     name = problemName,
-                                     description = "Imported from ZIP"
-                                 )
-                             ).also {
-                                 problemsCreated++
-                             }
-
-                         val solution = Solution(
-                             user = user,
-                             problem = problem,
-                             language = detectLanguage(fileName),
-                             status = SolutionStatus.WAITING,
-                             submittedAt = LocalDateTime.now(),
-                             filePath = relativeParts.joinToString("/"),
-                             code = content
-                         )
-
-                         solutionRepository.save(solution)
-                         solutionsCreated++
                     }
                 } catch (ex: Exception) {
                     skippedFiles++

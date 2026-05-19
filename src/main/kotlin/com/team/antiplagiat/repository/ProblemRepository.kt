@@ -5,6 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 
 interface ProblemRepository : JpaRepository<Problem, Long> {
-	fun findByName(name: String): Problem?
+	fun findFirstByName(name: String): Problem?
 }
-

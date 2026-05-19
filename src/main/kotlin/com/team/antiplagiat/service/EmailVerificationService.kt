@@ -75,6 +75,12 @@ class EmailVerificationService(
         val link =
             "${properties.baseUrl}/auth/verify-email?token=$rawToken"
 
+        if (!properties.enabled) {
+            logger.info { "Email verification is disabled in dev mode. Verification link for ${user.email}: $link" }
+            meterRegistry.counter("email.verification.skipped.disabled").increment()
+            return
+        }
+
         logger.debug { "Отправляем письмо верификации на ${user.email}" }
         resendService.send(
             to = user.email,
@@ -130,9 +136,5 @@ class EmailVerificationService(
     fun getUserById(userId: Long): User {
         return userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("User not found with id: $userId") }
-    }
-
-    fun generateToken(user: User): String {
-        return tokenService.generateToken(user)
     }
 }

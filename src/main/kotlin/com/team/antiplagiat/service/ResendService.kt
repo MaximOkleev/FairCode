@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class ResendService(
-    private val restTemplateBuilder: RestTemplateBuilder,
+    restTemplateBuilder: RestTemplateBuilder,
     private val properties: ResendProperties
 ) {
 
@@ -20,6 +20,10 @@ class ResendService(
         subject: String,
         html: String
     ) {
+        if (!properties.enabled || properties.apiKey.isBlank()) {
+            return
+        }
+
         val headers = HttpHeaders().apply {
             contentType = MediaType.APPLICATION_JSON
             setBearerAuth(properties.apiKey)

@@ -3,8 +3,8 @@ package com.team.antiplagiat.service
 import com.team.antiplagiat.controller.dto.zipimport.ImportJobDto
 import com.team.antiplagiat.models.ImportJob
 import com.team.antiplagiat.models.ImportJobStatus
-import com.team.antiplagiat.models.User
 import com.team.antiplagiat.repository.ImportJobRepository
+import com.team.antiplagiat.repository.UserRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -15,12 +15,17 @@ import java.time.LocalDateTime
 private val logger = KotlinLogging.logger {}
 
 @Service
+@Suppress("unused")
 class ImportJobService(
-    private val importJobRepository: ImportJobRepository
+    private val importJobRepository: ImportJobRepository,
+    private val userRepository: UserRepository
 ) {
 
     @Transactional
-    fun createJob(admin: User, fileName: String): ImportJob {
+    fun createJob(adminId: Long, fileName: String): ImportJob {
+        val admin = userRepository.findById(adminId)
+            .orElseThrow { IllegalArgumentException("Admin with id=$adminId not found") }
+
         val job = ImportJob(
             admin = admin,
             fileName = fileName,
@@ -117,4 +122,3 @@ class ImportJobService(
         )
     }
 }
-

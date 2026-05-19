@@ -44,7 +44,6 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("com.auth0:java-jwt:4.4.0")
 	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
-	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 	implementation("io.micrometer:micrometer-core")
 	implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation(kotlin("stdlib"))
@@ -59,7 +58,7 @@ kotlin {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
-	maxHeapSize = "2g"
+	maxHeapSize = "4g"
 	jvmArgs("-XX:+EnableDynamicAgentLoading", "-Xshare:off")
 }
 

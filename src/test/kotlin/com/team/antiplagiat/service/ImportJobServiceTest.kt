@@ -4,6 +4,7 @@ import com.team.antiplagiat.models.ImportJob
 import com.team.antiplagiat.models.ImportJobStatus
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.repository.ImportJobRepository
+import com.team.antiplagiat.repository.UserRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
@@ -23,15 +24,17 @@ class ImportJobServiceTest {
                 job
             }
         }
-        val service = ImportJobService(repository)
-        val admin = User(id = 1L, login = "admin", email = "admin@example.com")
+        val userRepository = mock<UserRepository> {
+            whenever(mock.findById(1L)).thenReturn(java.util.Optional.of(User(id = 1L, login = "admin", email = "admin@example.com")))
+        }
+        val service = ImportJobService(repository, userRepository)
 
         // Act
-        val job = service.createJob(admin, "solutions.zip")
+        val job = service.createJob(1L, "solutions.zip")
 
         // Assert
         assertEquals(1L, job.id)
-        assertEquals(admin.id, job.admin.id)
+        assertEquals(1L, job.admin.id)
         assertEquals("solutions.zip", job.fileName)
         assertEquals(ImportJobStatus.PENDING, job.status)
         assertEquals(0, job.importedSolutions)
@@ -52,7 +55,8 @@ class ImportJobServiceTest {
                 invocation.arguments[0] as ImportJob
             }
         }
-        val service = ImportJobService(repository)
+        val userRepository = mock<UserRepository>()
+        val service = ImportJobService(repository, userRepository)
 
         // Act
         service.completeJob(1L, 1L, 5, 2, 1, listOf("error1", "error2"))
@@ -79,7 +83,8 @@ class ImportJobServiceTest {
         val repository = mock<ImportJobRepository> {
             whenever(mock.findByIdAndAdminId(1L, 1L)).thenReturn(job)
         }
-        val service = ImportJobService(repository)
+        val userRepository = mock<UserRepository>()
+        val service = ImportJobService(repository, userRepository)
 
         // Act
         val dto = service.getJob(1L, 1L)
@@ -93,4 +98,3 @@ class ImportJobServiceTest {
         assertEquals("error2", dto.errors[1])
     }
 }
-

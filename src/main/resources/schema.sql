@@ -24,13 +24,13 @@ CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_token_hash ON email_ver
 
 -- Инициализация тестовых пользователей для разработки/тестирования
 -- Пароль: admin123
--- BCrypt хеш: $2a$10$7.6Z/LL/6AvQxZ7pI/lUWOD5f1hK9W8K2z3L3J8R9V5M2X7Y9Z1a
+-- BCrypt хеш: $2a$10$fIZ0W0dNFtI5QZbJvY1I6OZzg4IJs6Uo2dLcXrOh/ZLmZrSv5fYO2
 INSERT INTO users (login, email, email_verified, password_hash, role)
-SELECT 'admin', 'admin@example.com', true, '$2a$10$7.6Z/LL/6AvQxZ7pI/lUWOD5f1hK9W8K2z3L3J8R9V5M2X7Y9Z1a', 'ADMIN'
+SELECT 'admin', 'admin@example.com', true, '$2a$10$fIZ0W0dNFtI5QZbJvY1I6OZzg4IJs6Uo2dLcXrOh/ZLmZrSv5fYO2', 'ADMIN'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE login = 'admin');
 
 INSERT INTO users (login, email, email_verified, password_hash, role)
-SELECT 'user1', 'user1@example.com', true, '$2a$10$7.6Z/LL/6AvQxZ7pI/lUWOD5f1hK9W8K2z3L3J8R9V5M2X7Y9Z1a', 'BASIC'
+SELECT 'user1', 'user1@example.com', true, '$2a$10$fIZ0W0dNFtI5QZbJvY1I6OZzg4IJs6Uo2dLcXrOh/ZLmZrSv5fYO2', 'BASIC'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE login = 'user1');
 
 CREATE TABLE IF NOT EXISTS contests (
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS contests (
 
 CREATE TABLE IF NOT EXISTS problems (
     id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(200) NOT NULL,
+    name VARCHAR(200) NOT NULL UNIQUE,
     description TEXT
 );
 
@@ -115,4 +115,3 @@ CREATE TABLE IF NOT EXISTS import_jobs (
 
 CREATE INDEX IF NOT EXISTS idx_import_jobs_admin_id_started_at ON import_jobs(admin_id, started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_import_jobs_status ON import_jobs(status);
-

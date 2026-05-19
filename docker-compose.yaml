@@ -67,7 +67,7 @@ services: #раздел с описанием сервисов (контейне
       # Spring Security Configuration
       # По умолчанию Security ОТКЛЮЧЕНА для docker (dev mode)
       # Для production: измените на true и используйте secrets management
-      APP_SECURITY_ENABLED: "false" # Отключить security (dev mode)
+      APP_SECURITY_ENABLED: "true" # Отключить security (dev mode)
       APP_SECURITY_USER_PROVIDER: database # Использовать database users когда включена
 
       # APP_SECURITY_MEMORY_USERNAME: admin            # in-memory user (не используется, security disabled)

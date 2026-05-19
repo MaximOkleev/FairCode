@@ -3,7 +3,6 @@ package com.team.antiplagiat.controller
 import com.team.antiplagiat.config.TokenPayloadExtractor
 import com.team.antiplagiat.controller.dto.zipimport.ImportJobDto
 import com.team.antiplagiat.controller.dto.zipimport.ZipImportResponse
-import com.team.antiplagiat.repository.UserRepository
 import com.team.antiplagiat.service.ImportJobService
 import com.team.antiplagiat.service.ZipImportService
 import io.swagger.v3.oas.annotations.Operation
@@ -20,10 +19,10 @@ import org.springframework.web.multipart.MultipartFile
 @RestController
 @RequestMapping("/api/import")
 @Tag(name = "Import", description = "API for ZIP imports of problems and solutions")
+@Suppress("unused")
 class ImportController(
     private val zipImportService: ZipImportService,
-    private val importJobService: ImportJobService,
-    private val userRepository: UserRepository
+    private val importJobService: ImportJobService
 ) {
     @PostMapping("/zip", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @Operation(
@@ -53,7 +52,25 @@ class ImportController(
             return ResponseEntity.badRequest().build()
         }
 
-        return ResponseEntity.ok(zipImportService.importZip(file))
+        val fileName = file.originalFilename ?: file.name
+        val job = importJobService.createJob(payload.userId, fileName)
+        importJobService.startJob(job.id, payload.userId)
+
+        return try {
+            val response = zipImportService.importZip(file)
+            importJobService.completeJob(
+                jobId = job.id,
+                adminId = payload.userId,
+                importedSolutions = response.solutionsCreated,
+                createdProblems = response.problemsCreated,
+                skippedFiles = response.skippedFiles,
+                errors = response.errors
+            )
+            ResponseEntity.ok(response)
+        } catch (ex: Exception) {
+            importJobService.failJob(job.id, payload.userId, ex.message ?: "ZIP import failed")
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
+        }
     }
 
     @GetMapping("/jobs/{jobId}")
@@ -72,7 +89,7 @@ class ImportController(
         return try {
             val job = importJobService.getJob(jobId, payload.userId)
             ResponseEntity.ok(job)
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             ResponseEntity.notFound().build()
         }
     }
@@ -93,9 +110,8 @@ class ImportController(
         return try {
             val history = importJobService.getJobHistory(payload.userId, pageable)
             ResponseEntity.ok(history)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
         }
     }
 }
-
