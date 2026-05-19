@@ -8,4 +8,3 @@ data class ZipImportResponse(
     val usersNotFound: Int,
     val errors: List<String>
 )
-
