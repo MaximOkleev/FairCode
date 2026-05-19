@@ -46,7 +46,7 @@ class EmailVerificationService(
             return
         }
 
-        val lastToken = tokenRepository.findLatestByUserId(user.id)
+        val lastToken = tokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByIdDesc(user.id)
         if (lastToken != null && lastToken.usedAt == null) {
             val minutesSinceCreation = ChronoUnit.MINUTES.between(lastToken.createdAt, Instant.now())
             if (minutesSinceCreation < RATE_LIMIT_MINUTES) {

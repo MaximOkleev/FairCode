@@ -27,15 +27,19 @@ class ZipImportService(
     private val zipImportProperties: ZipImportProperties,
     private val meterRegistry: MeterRegistry
 ) {
+    private data class ImportStats(
+        var problemsCreated: Int = 0,
+        var solutionsCreated: Int = 0,
+        var skippedFiles: Int = 0,
+        var usersMatched: Int = 0,
+        var usersNotFound: Int = 0,
+        val errors: MutableList<String> = mutableListOf()
+    )
+
     @Transactional
     fun importZip(file: MultipartFile): ZipImportResponse {
 
-        var problemsCreated = 0
-        var solutionsCreated = 0
-        var skippedFiles = 0
-        var usersMatched = 0
-        var usersNotFound = 0
-        val errors = mutableListOf<String>()
+        val stats = ImportStats()
         val maxFiles = zipImportProperties.maxFiles
         val maxEntrySizeBytes = zipImportProperties.maxEntrySize.toBytes()
         var fileEntriesSeen = 0
@@ -44,106 +48,131 @@ class ZipImportService(
             var entry = zip.nextEntry
 
             while (entry != null) {
-                val rawPath = entry.name
-
-                try {
-                    if (!entry.isDirectory) {
-                        fileEntriesSeen++
-                        if (fileEntriesSeen > maxFiles) {
-                            skippedFiles++
-                            errors += "Превышено максимальное количество файлов в архиве: $maxFiles"
-                        } else {
-                            val parts = normalizeEntryPath(rawPath)
-                            if (parts == null) {
-                                skippedFiles++
-                                errors += "Опасный или некорректный путь пропущен: $rawPath"
-                            } else {
-                                val relativeParts = if (parts.firstOrNull() == "Solutions") parts.drop(1) else parts
-                                if (relativeParts.size < 2) {
-                                    skippedFiles++
-                                } else {
-                                    val problemName = relativeParts.first()
-                                    val fileName = relativeParts.last()
-
-                                    if (!isAllowedSourceFile(fileName)) {
-                                        skippedFiles++
-                                        errors += "Неподдерживаемое расширение файла пропущено: $fileName"
-                                    } else if (entry.size >= 0 && entry.size > maxEntrySizeBytes) {
-                                        skippedFiles++
-                                        errors += "Файл слишком большой и был пропущен: $rawPath (лимит ${zipImportProperties.maxEntrySize.toMegabytes()}MB)"
-                                    } else {
-                                        val content = readEntryText(zip, maxEntrySizeBytes)
-                                        if (content == null) {
-                                            skippedFiles++
-                                            errors += "Файл слишком большой и был пропущен: $rawPath (лимит ${zipImportProperties.maxEntrySize.toMegabytes()}MB)"
-                                        } else {
-                                            // Извлекаем login из имени файла (без расширения)
-                                            val login = fileName.substringBeforeLast(".")
-                                            val user = userRepository.findByLogin(login)
-                                            if (user == null) {
-                                                skippedFiles++
-                                                usersNotFound++
-                                                errors += "Пользователь с логином '$login' не найден в системе (файл: $fileName)"
-                                            } else {
-                                                usersMatched++
-
-                                                val problem = problemRepository.findFirstByName(problemName)
-                                                    ?: problemRepository.save(
-                                                        Problem(
-                                                            name = problemName,
-                                                            description = "Imported from ZIP"
-                                                        )
-                                                    ).also {
-                                                        problemsCreated++
-                                                    }
-
-                                                val solution = Solution(
-                                                    user = user,
-                                                    problem = problem,
-                                                    language = detectLanguage(fileName),
-                                                    status = SolutionStatus.WAITING,
-                                                    submittedAt = LocalDateTime.now(),
-                                                    filePath = relativeParts.joinToString("/"),
-                                                    code = content
-                                                )
-
-                                                solutionRepository.save(solution)
-                                                solutionsCreated++
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } catch (ex: Exception) {
-                    skippedFiles++
-                    errors += "Ошибка при обработке $rawPath: ${ex.message}"
-                } finally {
-                    zip.closeEntry()
+                if (!entry.isDirectory) {
+                    fileEntriesSeen++
+                    processEntry(
+                        zip = zip,
+                        entry = entry,
+                        fileEntriesSeen = fileEntriesSeen,
+                        maxFiles = maxFiles,
+                        maxEntrySizeBytes = maxEntrySizeBytes,
+                        stats = stats
+                    )
                 }
 
+                zip.closeEntry()
                 entry = zip.nextEntry
             }
         }
 
-        if (solutionsCreated > 0) {
-            meterRegistry.counter("zip.import.total").increment(solutionsCreated.toDouble())
+        if (stats.solutionsCreated > 0) {
+            meterRegistry.counter("zip.import.total").increment(stats.solutionsCreated.toDouble())
         }
 
         logger.info {
-            "ZIP import completed: problemsCreated=$problemsCreated, solutionsCreated=$solutionsCreated, " +
-            "usersMatched=$usersMatched, usersNotFound=$usersNotFound, skippedFiles=$skippedFiles, errors=${errors.size}"
+            "ZIP import completed: problemsCreated=${stats.problemsCreated}, solutionsCreated=${stats.solutionsCreated}, " +
+                "usersMatched=${stats.usersMatched}, usersNotFound=${stats.usersNotFound}, skippedFiles=${stats.skippedFiles}, errors=${stats.errors.size}"
         }
 
         return ZipImportResponse(
-            problemsCreated = problemsCreated,
-            solutionsCreated = solutionsCreated,
-            skippedFiles = skippedFiles,
-            usersMatched = usersMatched,
-            usersNotFound = usersNotFound,
-            errors = errors
+            problemsCreated = stats.problemsCreated,
+            solutionsCreated = stats.solutionsCreated,
+            skippedFiles = stats.skippedFiles,
+            usersMatched = stats.usersMatched,
+            usersNotFound = stats.usersNotFound,
+            errors = stats.errors
         )
+    }
+
+    private fun processEntry(
+        zip: ZipInputStream,
+        entry: java.util.zip.ZipEntry,
+        fileEntriesSeen: Int,
+        maxFiles: Int,
+        maxEntrySizeBytes: Long,
+        stats: ImportStats
+    ) {
+        val rawPath = entry.name
+
+        try {
+            if (fileEntriesSeen > maxFiles) {
+                stats.skippedFiles++
+                stats.errors += "Превышено максимальное количество файлов в архиве: $maxFiles"
+                return
+            }
+
+            val parts = normalizeEntryPath(rawPath)
+            if (parts == null) {
+                stats.skippedFiles++
+                stats.errors += "Опасный или некорректный путь пропущен: $rawPath"
+                return
+            }
+
+            val relativeParts = if (parts.firstOrNull() == "Solutions") parts.drop(1) else parts
+            if (relativeParts.size < 2) {
+                stats.skippedFiles++
+                return
+            }
+
+            val problemName = relativeParts.first()
+            val fileName = relativeParts.last()
+
+            if (!isAllowedSourceFile(fileName)) {
+                stats.skippedFiles++
+                stats.errors += "Неподдерживаемое расширение файла пропущено: $fileName"
+                return
+            }
+
+            if (entry.size >= 0 && entry.size > maxEntrySizeBytes) {
+                stats.skippedFiles++
+                stats.errors += "Файл слишком большой и был пропущен: $rawPath (лимит ${zipImportProperties.maxEntrySize.toMegabytes()}MB)"
+                return
+            }
+
+            val content = readEntryText(zip, maxEntrySizeBytes)
+            if (content == null) {
+                stats.skippedFiles++
+                stats.errors += "Файл слишком большой и был пропущен: $rawPath (лимит ${zipImportProperties.maxEntrySize.toMegabytes()}MB)"
+                return
+            }
+
+            // Извлекаем login из имени файла (без расширения)
+            val login = fileName.substringBeforeLast(".")
+            val user = userRepository.findByLogin(login)
+            if (user == null) {
+                stats.skippedFiles++
+                stats.usersNotFound++
+                stats.errors += "Пользователь с логином '$login' не найден в системе (файл: $fileName)"
+                return
+            }
+
+            val problem = problemRepository.findFirstByName(problemName)
+                ?: problemRepository.save(
+                    Problem(
+                        name = problemName,
+                        description = "Imported from ZIP"
+                    )
+                ).also {
+                    stats.problemsCreated++
+                }
+
+            val solution = Solution(
+                user = user,
+                problem = problem,
+                language = detectLanguage(fileName),
+                status = SolutionStatus.WAITING,
+                submittedAt = LocalDateTime.now(),
+                filePath = relativeParts.joinToString("/"),
+                code = content
+            )
+
+            solutionRepository.save(solution)
+            stats.usersMatched++
+            stats.solutionsCreated++
+        } catch (ex: Exception) {
+            stats.skippedFiles++
+            stats.errors += "Ошибка при обработке $rawPath: ${ex.message}"
+        }
     }
 
     private fun normalizeEntryPath(rawPath: String): List<String>? {

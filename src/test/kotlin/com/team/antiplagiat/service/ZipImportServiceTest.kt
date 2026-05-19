@@ -149,6 +149,39 @@ class ZipImportServiceTest {
     }
 
     @Test
+    fun `importZip does not count matched user when solution save fails`() {
+        val problemRepository = repoProxy(ProblemRepository::class.java) { method, _ ->
+            when (method.name) {
+                "findFirstByName" -> null
+                "save" -> Problem(id = 1L, name = "Task", description = "Imported from ZIP")
+                else -> defaultValue(method.returnType)
+            }
+        }
+        val solutionRepository = repoProxy(SolutionRepository::class.java) { method, _ ->
+            when (method.name) {
+                "save" -> throw RuntimeException("db failure")
+                else -> defaultValue(method.returnType)
+            }
+        }
+        val userRepository = repoProxy(UserRepository::class.java) { method, _ ->
+            when (method.name) {
+                "findByLogin" -> User(id = 1L, login = "ivan", email = "ivan@example.com")
+                else -> defaultValue(method.returnType)
+            }
+        }
+
+        val service = ZipImportService(problemRepository, solutionRepository, userRepository, ZipImportProperties(), SimpleMeterRegistry())
+        val response = service.importZip(multipartZip("Solutions/Task/ivan.cpp" to "int main() { return 0; }"))
+
+        assertEquals(1, response.problemsCreated)
+        assertEquals(0, response.solutionsCreated)
+        assertEquals(1, response.skippedFiles)
+        assertEquals(0, response.usersMatched)
+        assertEquals(0, response.usersNotFound)
+        assertTrue(response.errors.any { it.contains("Ошибка при обработке") })
+    }
+
+    @Test
     fun `importZip skips dangerous path`() {
         val problemRepository = repoProxy(ProblemRepository::class.java) { method, _ -> defaultValue(method.returnType) }
         val solutionRepository = repoProxy(SolutionRepository::class.java) { method, _ -> defaultValue(method.returnType) }

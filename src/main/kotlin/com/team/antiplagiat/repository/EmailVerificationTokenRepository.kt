@@ -12,8 +12,7 @@ import org.springframework.transaction.annotation.Transactional
 interface EmailVerificationTokenRepository : JpaRepository<EmailVerificationToken, Long> {
     fun findByTokenHash(tokenHash: String): EmailVerificationToken?
 
-    @Query("SELECT e FROM EmailVerificationToken e WHERE e.userId = :userId AND e.usedAt IS NULL ORDER BY e.id DESC LIMIT 1")
-    fun findLatestByUserId(@Param("userId") userId: Long): EmailVerificationToken?
+    fun findFirstByUserIdAndUsedAtIsNullOrderByIdDesc(userId: Long): EmailVerificationToken?
 
     @Modifying
     @Transactional
