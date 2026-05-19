@@ -18,34 +18,34 @@ class AuthService(
     private val meterRegistry: MeterRegistry
 ) {
     fun authenticate(login: String, password: String): String {
-        logger.debug { "Попытка аутентификации пользователя: $login" }
+        logger.debug { "Authentication attempt" }
         val user = userRepository.findByLogin(login)
             ?: userRepository.findByEmail(login)
             ?: run {
-                logger.warn { "Пользователь не найден: $login" }
+                logger.warn { "Authentication failed: user not found" }
                 meterRegistry.counter("auth.login.failed.not_found").increment()
                 meterRegistry.counter("auth.login.failed.total").increment()
                 throw InvalidCredentialsException()
             }
 
         if (!passwordEncoder.matches(password, user.passwordHash)) {
-            logger.warn { "Неверный пароль для пользователя: $login" }
+            logger.warn { "Authentication failed: invalid password" }
             meterRegistry.counter("auth.login.failed.invalid_password").increment()
             meterRegistry.counter("auth.login.failed.total").increment()
             throw InvalidCredentialsException()
         }
 
         if (!user.emailVerified) {
-            logger.warn { "Попытка входа с неподтвёрженным email: ${user.email}" }
+            logger.warn { "Authentication blocked: email is not verified, userId=${user.id}" }
             meterRegistry.counter("auth.login.failed.email_not_verified").increment()
             meterRegistry.counter("auth.login.failed.total").increment()
             throw EmailNotVerifiedException(
-                "Email не подтвёржен. Письмо с ссылкой верификации отправлено на ${user.email}",
+                "Email не подтверждён. Письмо с ссылкой верификации отправлено повторно.",
                 user.email
             )
         }
 
-        logger.info { "Пользователь успешно аутентифицирован: $login" }
+        logger.info { "Authentication successful: userId=${user.id}" }
         meterRegistry.counter("auth.login.success").increment()
         return tokenService.generateToken(user)
     }

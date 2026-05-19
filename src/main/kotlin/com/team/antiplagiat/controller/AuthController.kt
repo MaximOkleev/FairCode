@@ -2,7 +2,6 @@ package com.team.antiplagiat.controller
 
 import com.team.antiplagiat.controller.dto.auth.LoginRequest
 import com.team.antiplagiat.controller.dto.auth.LoginResponse
-import com.team.antiplagiat.controller.dto.auth.VerifyEmailRequest
 import com.team.antiplagiat.controller.dto.auth.VerifyEmailResponse
 import com.team.antiplagiat.service.AuthService
 import com.team.antiplagiat.service.EmailVerificationService

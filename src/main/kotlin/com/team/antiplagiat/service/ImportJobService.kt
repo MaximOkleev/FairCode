@@ -1,6 +1,7 @@
 package com.team.antiplagiat.service
 
 import com.team.antiplagiat.controller.dto.zipimport.ImportJobDto
+import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.models.ImportJob
 import com.team.antiplagiat.models.ImportJobStatus
 import com.team.antiplagiat.repository.ImportJobRepository
@@ -95,7 +96,7 @@ class ImportJobService(
     @Transactional(readOnly = true)
     fun getJob(jobId: Long, adminId: Long): ImportJobDto {
         val job = importJobRepository.findByIdAndAdminId(jobId, adminId)
-            ?: throw IllegalArgumentException("Import job not found or access denied")
+            ?: throw ResourceNotFoundException("Import job not found")
 
         return mapToDto(job)
     }

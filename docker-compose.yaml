@@ -33,7 +33,7 @@ services: #раздел с описанием сервисов (контейне
 
   # Основное приложение Spring Boot
   # Строится из Dockerfile в корне проекта
-  # Зависит от postgres (база данных) и mailhog (email сервер)
+  # Зависит от postgres. Email отправляется через Resend или логируется в dev-mode.
   # Доступно по порту 8080
   app: # Сервис Spring Boot приложения
     build: # Сборка образа из Dockerfile
@@ -65,13 +65,12 @@ services: #раздел с описанием сервисов (контейне
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
 
       # Spring Security Configuration
-      # По умолчанию Security ОТКЛЮЧЕНА для docker (dev mode)
-      # Для production: измените на true и используйте secrets management
-      APP_SECURITY_ENABLED: "true" # Отключить security (dev mode)
-      APP_SECURITY_USER_PROVIDER: database # Использовать database users когда включена
+      # Security включена: все /api/** требуют JWT, кроме /api/register и /api/auth/**
+      APP_SECURITY_ENABLED: "true"
+      APP_SECURITY_USER_PROVIDER: database
 
-      # APP_SECURITY_MEMORY_USERNAME: admin            # in-memory user (не используется, security disabled)
-      # APP_SECURITY_MEMORY_PASSWORD: admin            # in-memory password
+      # APP_SECURITY_MEMORY_USERNAME: admin            # in-memory user (не используется)
+      # APP_SECURITY_MEMORY_PASSWORD: admin            # in-memory password (не используется)
 
       # Monitoring
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus

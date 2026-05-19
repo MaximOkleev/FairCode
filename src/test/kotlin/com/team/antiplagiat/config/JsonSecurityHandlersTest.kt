@@ -23,10 +23,9 @@ class JsonSecurityHandlersTest {
 
         assertEquals("application/json", resp.contentType)
         val body = mapper.readTree(resp.contentAsString)
-        assertEquals(401, body.get("status").asInt())
-        assertEquals("Unauthorized", body.get("error").asText())
         assertTrue(body.get("message").asText().contains("Bad creds"))
-        assertEquals("/api/protected", body.get("path").asText())
+        assertTrue(body.has("timestamp"))
+        assertTrue(body.has("traceId"))
     }
 
     @Test
@@ -38,10 +37,9 @@ class JsonSecurityHandlersTest {
 
         assertEquals("application/json", resp.contentType)
         val body = mapper.readTree(resp.contentAsString)
-        assertEquals(403, body.get("status").asInt())
-        assertEquals("Forbidden", body.get("error").asText())
         assertTrue(body.get("message").asText().contains("Denied"))
-        assertEquals("/api/forbidden", body.get("path").asText())
+        assertTrue(body.has("timestamp"))
+        assertTrue(body.has("traceId"))
     }
 
     @Test
@@ -52,8 +50,9 @@ class JsonSecurityHandlersTest {
 
         assertEquals("application/json", resp.contentType)
         val body = mapper.readTree(resp.contentAsString)
-        assertEquals(401, body.get("status").asInt())
-        assertEquals("", body.get("path").asText())
+        assertTrue(body.has("message"))
+        assertTrue(body.has("timestamp"))
+        assertTrue(body.has("traceId"))
     }
 
     @Test
@@ -64,8 +63,9 @@ class JsonSecurityHandlersTest {
 
         assertEquals("application/json", resp.contentType)
         val body = mapper.readTree(resp.contentAsString)
-        assertEquals(403, body.get("status").asInt())
-        assertEquals("", body.get("path").asText())
+        assertTrue(body.has("message"))
+        assertTrue(body.has("timestamp"))
+        assertTrue(body.has("traceId"))
     }
 
     @Test

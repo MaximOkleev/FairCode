@@ -1,4 +1,3 @@
-// Created new DTO for simple plagiarism result
 package com.team.antiplagiat.controller.dto.plagiarism
 
 data class PlagiarismSimpleResultResponse(
@@ -7,4 +6,3 @@ data class PlagiarismSimpleResultResponse(
     val user2: String,
     val similarity: Double
 )
-

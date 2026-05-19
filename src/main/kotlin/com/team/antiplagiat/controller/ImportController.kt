@@ -50,7 +50,7 @@ class ImportController(
         }
 
         if (file.isEmpty) {
-            return ResponseEntity.badRequest().build()
+            throw IllegalArgumentException("ZIP file is empty")
         }
 
         val fileName = file.originalFilename ?: file.name
@@ -91,12 +91,8 @@ class ImportController(
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
         }
 
-        return try {
-            val job = importJobService.getJob(jobId, payload.userId)
-            ResponseEntity.ok(job)
-        } catch (_: IllegalArgumentException) {
-            ResponseEntity.notFound().build()
-        }
+        val job = importJobService.getJob(jobId, payload.userId)
+        return ResponseEntity.ok(job)
     }
 
     @GetMapping("/jobs/history")
@@ -112,13 +108,7 @@ class ImportController(
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
         }
 
-        return try {
-            val history = importJobService.getJobHistory(payload.userId, pageable)
-            ResponseEntity.ok(history)
-        } catch (ex: Exception) {
-            // Пробрасываем специализированное исключение, чтобы GlobalExceptionHandler
-            // вернул понятный JSON с message и traceId
-            throw ImportFailedException(ex.message ?: "Failed to get import job history", ex)
-        }
+        val history = importJobService.getJobHistory(payload.userId, pageable)
+        return ResponseEntity.ok(history)
     }
 }

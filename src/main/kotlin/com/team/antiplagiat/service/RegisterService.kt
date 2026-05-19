@@ -31,17 +31,17 @@ class RegisterService(
 
     @Transactional
     fun register(request: RegisterRequest): RegisterResponse {
-        logger.info { "Попытка регистрации: email=${request.email}" }
-        logger.debug { "Проверка уникальности email=${request.email}" }
+        logger.info { "Registration attempt" }
+        logger.debug { "Checking email uniqueness" }
 
         if (userRepository.findByEmail(request.email) != null) {
-            logger.warn { "Регистрация отклонена: email '${request.email}' уже используется" }
+            logger.warn { "Registration rejected: email already exists" }
             registrationFailureCounter.increment()
-            throw IllegalArgumentException("Email '${request.email}' уже зарегистрирован")
+            throw IllegalArgumentException("Email already registered")
         }
 
         val hashedPassword = passwordEncoder.encode(request.password)
-        logger.debug { "Пароль хеширован для email=${request.email}" }
+        logger.debug { "Password encoded" }
 
         val login = request.email.substringBefore("@")
         val user = User(
@@ -52,11 +52,11 @@ class RegisterService(
         )
 
         val saved = userRepository.save(user)
-        logger.debug { "Пользователь сохранён: id=${saved.id}, email=${saved.email}" }
-        logger.info { "Регистрация успешна: id=${saved.id}, email=${saved.email}" }
+        logger.debug { "User saved: userId=${saved.id}" }
+        logger.info { "Registration successful: userId=${saved.id}" }
 
         registrationCounter.increment()
-        logger.info { "Отправляем письмо верификации на ${saved.email}" }
+        logger.info { "Verification email sent: userId=${saved.id}" }
         emailVerificationService.sendVerification(saved.email)
 
         return RegisterResponse(

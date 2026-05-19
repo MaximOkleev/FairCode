@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS import_jobs (
     id BIGSERIAL PRIMARY KEY,
     admin_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    started_at TIMESTAMP NOT NULL,
+    started_at TIMESTAMP,
     finished_at TIMESTAMP,
     file_name VARCHAR(255) NOT NULL,
     imported_solutions INT NOT NULL DEFAULT 0,
@@ -115,5 +115,5 @@ CREATE TABLE IF NOT EXISTS import_jobs (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_import_jobs_admin_id_started_at ON import_jobs(admin_id, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_import_jobs_admin_id_created_at ON import_jobs(admin_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_import_jobs_status ON import_jobs(status);

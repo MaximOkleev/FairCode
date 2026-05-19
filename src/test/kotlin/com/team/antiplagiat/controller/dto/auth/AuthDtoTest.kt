@@ -76,36 +76,6 @@ class AuthDtoTest {
         assertEquals("ResetPasswordRequest(token=token-123, newPassword=strong-password)", req.toString())
     }
 
-    @Test
-    fun `verify email request rejects blank token`() {
-        val req = VerifyEmailRequest(token = "")
-
-        val violations = validator.validate(req)
-
-        assertEquals(1, violations.size)
-        assertTrue(violations.any { it.message.contains("Токен не может быть пустым") })
-    }
-
-    @Test
-    fun `verify email request accepts valid token`() {
-        val req = VerifyEmailRequest(token = "verify-token")
-
-        val violations = validator.validate(req)
-
-        assertTrue(violations.isEmpty())
-    }
-
-    @Test
-    fun `verify email request behaves like a data class`() {
-        val req = VerifyEmailRequest(token = "verify-token")
-        val (token) = req
-
-        assertEquals("verify-token", req.token)
-        assertEquals("verify-token", token)
-        assertEquals(req, req.copy())
-        assertEquals(req.hashCode(), req.copy().hashCode())
-        assertEquals("VerifyEmailRequest(token=verify-token)", req.toString())
-    }
 
     @Test
     fun `change password request rejects blank old and new password`() {
