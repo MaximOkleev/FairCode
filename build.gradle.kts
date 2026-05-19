@@ -59,6 +59,7 @@ kotlin {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	maxHeapSize = "2g"
 	jvmArgs("-XX:+EnableDynamicAgentLoading", "-Xshare:off")
 }
 

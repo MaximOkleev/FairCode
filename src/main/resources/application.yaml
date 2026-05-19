@@ -13,6 +13,10 @@ spring:
       ddl-auto: update
     show-sql: true
     defer-datasource-initialization: true
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
 server:
   error:
     include-message: always
@@ -27,6 +31,9 @@ logging:
 app:
   solution:
     max-attempts: 50
+  zip-import:
+    max-files: 1000
+    max-entry-size: 5MB
   contest:
     max-duration-hours: 5
   resend:
