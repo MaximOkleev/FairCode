@@ -6,6 +6,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
+import com.team.antiplagiat.exception.InvalidCredentialsException
 
 private val logger = KotlinLogging.logger {}
 
@@ -24,14 +25,14 @@ class AuthService(
                 logger.warn { "Пользователь не найден: $login" }
                 meterRegistry.counter("auth.login.failed.not_found").increment()
                 meterRegistry.counter("auth.login.failed.total").increment()
-                throw IllegalArgumentException("Invalid credentials")
+                throw InvalidCredentialsException()
             }
 
         if (!passwordEncoder.matches(password, user.passwordHash)) {
             logger.warn { "Неверный пароль для пользователя: $login" }
             meterRegistry.counter("auth.login.failed.invalid_password").increment()
             meterRegistry.counter("auth.login.failed.total").increment()
-            throw IllegalArgumentException("Invalid credentials")
+            throw InvalidCredentialsException()
         }
 
         if (!user.emailVerified) {

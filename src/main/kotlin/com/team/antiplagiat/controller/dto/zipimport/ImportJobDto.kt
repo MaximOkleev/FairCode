@@ -6,7 +6,8 @@ data class ImportJobDto(
     val id: Long,
     val status: String,
     val fileName: String,
-    val startedAt: LocalDateTime,
+    val createdAt: LocalDateTime,
+    val startedAt: LocalDateTime?,
     val finishedAt: LocalDateTime?,
     val importedSolutions: Int,
     val createdProblems: Int,
@@ -15,4 +16,3 @@ data class ImportJobDto(
     val usersNotFound: Int,
     val errors: List<String>
 )
-

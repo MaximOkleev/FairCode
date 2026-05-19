@@ -27,26 +27,10 @@ class RegisterController(private val registerService: RegisterService) {
         logger.info { "POST /api/register - регистрация нового пользователя: ${request.email}" }
         logger.debug { "Валидация данных: email=${request.email}, пароль скрыт" }
 
-        return try {
-            val response = registerService.register(request)
-            logger.info { "Пользователь зарегистрирован: ${request.email}, userId=${response.userId}" }
-            ResponseEntity.status(HttpStatus.CREATED).body(response)
-        } catch (e: IllegalArgumentException) {
-            logger.warn { "Регистрация отклонена: ${e.message}" }
-            ResponseEntity.badRequest().build()
-        } catch (e: IllegalStateException) {
-            logger.warn { "Слишком частая попытка отправки письма: ${e.message}" }
-            ResponseEntity.status(429).body(
-                RegisterResponse(
-                    userId = 0,
-                    email = request.email,
-                    message = e.message ?: "Too many requests. Try again later",
-                    emailVerificationRequired = true
-                )
-            )
-        } catch (e: Exception) {
-            logger.error { "Ошибка при регистрации пользователя ${request.email}: ${e.message}" }
-            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
-        }
+        val response = registerService.register(request)
+
+        logger.info { "Пользователь зарегистрирован: userId=${response.userId}" }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response)
     }
 }

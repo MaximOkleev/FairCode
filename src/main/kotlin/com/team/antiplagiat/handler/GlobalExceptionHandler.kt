@@ -1,6 +1,7 @@
 package com.team.antiplagiat.handler
 
 import com.team.antiplagiat.exception.ResourceNotFoundException
+import com.team.antiplagiat.exception.InvalidCredentialsException
 import com.team.antiplagiat.exception.TooManyAttemptsException
 import com.team.antiplagiat.filter.TraceIdFilter
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -124,6 +125,26 @@ class GlobalExceptionHandler {
             .body(
                 ErrorResponse(
                     message = ex.message ?: "Неверный аргумент",
+                    traceId = traceId
+                )
+            )
+    }
+
+    @ExceptionHandler(InvalidCredentialsException::class)
+    fun handleInvalidCredentials(
+        ex: InvalidCredentialsException
+    ): ResponseEntity<ErrorResponse> {
+        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+
+        logger.warn {
+            "InvalidCredentialsException | traceId=$traceId"
+        }
+
+        return ResponseEntity
+            .status(HttpStatus.UNAUTHORIZED)
+            .body(
+                ErrorResponse(
+                    message = ex.message ?: "Invalid email or password",
                     traceId = traceId
                 )
             )

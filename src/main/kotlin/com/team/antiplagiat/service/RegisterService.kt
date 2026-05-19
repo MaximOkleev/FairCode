@@ -61,6 +61,7 @@ class RegisterService(
 
         return RegisterResponse(
             userId = saved.id,
+            login = saved.login,
             email = saved.email,
             message = "Пользователь зарегистрирован. Проверьте почту для подтверждения email",
             emailVerificationRequired = true

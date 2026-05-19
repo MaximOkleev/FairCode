@@ -30,7 +30,8 @@ class ImportJobService(
             admin = admin,
             fileName = fileName,
             status = ImportJobStatus.PENDING,
-            startedAt = LocalDateTime.now()
+            createdAt = LocalDateTime.now(),
+            startedAt = null
         )
         logger.info { "Creating import job: fileName=$fileName, adminId=${admin.id}" }
         return importJobRepository.save(job)
@@ -42,6 +43,7 @@ class ImportJobService(
             ?: throw IllegalArgumentException("Import job not found or access denied")
 
         job.status = ImportJobStatus.IN_PROGRESS
+        job.startedAt = LocalDateTime.now()
         importJobRepository.save(job)
         logger.info { "Starting import job: id=$jobId" }
     }
@@ -100,13 +102,13 @@ class ImportJobService(
 
     @Transactional(readOnly = true)
     fun getJobHistory(adminId: Long, pageable: Pageable): Page<ImportJobDto> {
-        return importJobRepository.findByAdminIdOrderByStartedAtDesc(adminId, pageable)
+        return importJobRepository.findByAdminIdOrderByCreatedAtDesc(adminId, pageable)
             .map { mapToDto(it) }
     }
 
     @Transactional(readOnly = true)
     fun getJobHistory(adminId: Long): List<ImportJobDto> {
-        return importJobRepository.findByAdminIdOrderByStartedAtDesc(adminId)
+        return importJobRepository.findByAdminIdOrderByCreatedAtDesc(adminId)
             .map { mapToDto(it) }
     }
 
@@ -117,6 +119,7 @@ class ImportJobService(
             id = job.id,
             status = job.status.name,
             fileName = job.fileName,
+            createdAt = job.createdAt,
             startedAt = job.startedAt,
             finishedAt = job.finishedAt,
             importedSolutions = job.importedSolutions,

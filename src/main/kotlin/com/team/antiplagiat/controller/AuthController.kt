@@ -33,23 +33,30 @@ class AuthController(
     @PostMapping("/login")
     @Operation(summary = "Войти по логину и паролю, получить токен")
     fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<LoginResponse> {
-        logger.info { "POST /api/auth/login - попытка входа: ${request.login}" }
+        logger.info { "POST /api/auth/login - попытка входа" }
         return try {
             val token = authService.authenticate(request.login, request.password)
-            logger.info { "Пользователь успешно вошел: ${request.login}" }
+            logger.info { "Пользователь успешно вошел" }
             ResponseEntity.ok(LoginResponse(token = token))
         } catch (e: com.team.antiplagiat.service.EmailNotVerifiedException) {
-            logger.info { "Отправляем письмо верификации для ${e.email}" }
+            logger.info { "Email не подтверждён, отправляем письмо верификации" }
             try {
                 emailVerificationService.sendVerification(e.email)
-                ResponseEntity.status(403).body(LoginResponse(token = "", message = e.message))
+                ResponseEntity.status(403).body(
+                    LoginResponse(
+                        token = "",
+                        message = e.message
+                    )
+                )
             } catch (rateLimitException: IllegalStateException) {
                 logger.warn { "Слишком частая попытка отправки письма: ${rateLimitException.message}" }
-                ResponseEntity.status(429).body(LoginResponse(token = "", message = rateLimitException.message))
+                ResponseEntity.status(429).body(
+                    LoginResponse(
+                        token = "",
+                        message = rateLimitException.message
+                    )
+                )
             }
-        } catch (e: IllegalArgumentException) {
-            logger.warn { "Ошибка аутентификации: ${e.message}" }
-            ResponseEntity.status(401).body(LoginResponse(token = "", message = "Invalid email or password"))
         }
     }
 

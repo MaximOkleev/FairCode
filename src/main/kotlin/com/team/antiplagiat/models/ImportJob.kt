@@ -17,8 +17,8 @@ class ImportJob(
     @Column(nullable = false)
     var status: ImportJobStatus = ImportJobStatus.PENDING,
 
-    @Column(name = "started_at", nullable = false)
-    var startedAt: LocalDateTime = LocalDateTime.now(),
+    @Column(name = "started_at")
+    var startedAt: LocalDateTime? = null,
 
     @Column(name = "finished_at")
     var finishedAt: LocalDateTime? = null,

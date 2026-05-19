@@ -121,7 +121,6 @@ class UserControllerTest {
         val request = UserRequest(
             login = "updateduser",
             email = "updated@example.com",
-            role = User.Role.ADMIN
         )
 
         val updatedUser = User(
@@ -155,7 +154,6 @@ class UserControllerTest {
         val request = UserRequest(
             login = "testuser",
             email = "test@example.com",
-            role = User.Role.BASIC
         )
 
         whenever(userService.update(eq(999L), any(), any())).thenReturn(null)
@@ -208,8 +206,8 @@ class UserControllerTest {
         assertEquals(HttpStatus.UNAUTHORIZED, controller.get(1L, requestWith(null)).statusCode)
         assertEquals(HttpStatus.FORBIDDEN, controller.get(2L, requestWith(payload(1L, "BASIC"))).statusCode)
         assertEquals(HttpStatus.FORBIDDEN, controller.getAll(requestWith(payload(1L, "BASIC"))).statusCode)
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.update(1L, UserRequest("x", "x@e.com", User.Role.BASIC), requestWith(null)).statusCode)
-        assertEquals(HttpStatus.FORBIDDEN, controller.update(2L, UserRequest("x", "x@e.com", User.Role.BASIC), requestWith(payload(1L, "BASIC"))).statusCode)
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.update(1L, UserRequest("x", "x@e.com"), requestWith(null)).statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, controller.update(2L, UserRequest("x", "x@e.com"), requestWith(payload(1L, "BASIC"))).statusCode)
         assertEquals(HttpStatus.UNAUTHORIZED, controller.delete(1L, requestWith(null)).statusCode)
         assertEquals(HttpStatus.FORBIDDEN, controller.delete(2L, requestWith(payload(1L, "BASIC"))).statusCode)
     }

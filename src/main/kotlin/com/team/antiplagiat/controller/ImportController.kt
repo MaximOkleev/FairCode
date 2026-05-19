@@ -71,7 +71,7 @@ class ImportController(
             ResponseEntity.ok(response)
         } catch (ex: Exception) {
             importJobService.failJob(job.id, payload.userId, ex.message ?: "ZIP import failed")
-            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
+            throw ex
         }
     }
 
