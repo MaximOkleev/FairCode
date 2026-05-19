@@ -64,6 +64,8 @@ class ImportController(
                 importedSolutions = response.solutionsCreated,
                 createdProblems = response.problemsCreated,
                 skippedFiles = response.skippedFiles,
+                usersMatched = response.usersMatched,
+                usersNotFound = response.usersNotFound,
                 errors = response.errors
             )
             ResponseEntity.ok(response)

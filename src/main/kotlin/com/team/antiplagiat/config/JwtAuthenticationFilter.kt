@@ -1,5 +1,6 @@
 package com.team.antiplagiat.config
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -8,6 +9,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.filter.OncePerRequestFilter
+
+private val logger = KotlinLogging.logger {}
 
 class JwtAuthenticationFilter(
     private val tokenService: TokenService
@@ -55,7 +58,7 @@ class JwtAuthenticationFilter(
 
         } catch (ex: Exception) {
 
-            ex.printStackTrace()
+            logger.warn { "Invalid JWT token: ${ex.message}" }
 
             SecurityContextHolder.clearContext()
         }

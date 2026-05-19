@@ -20,6 +20,7 @@ class AuthServiceTest {
 
         val user = User(id = 5, login = "login", email = "a@b", emailVerified = true)
         every { repo.findByLogin("login") } returns user
+        every { repo.findByEmail("login") } returns null
         every { encoder.matches("pass", user.passwordHash) } returns true
         every { tokenService.generateToken(user) } returns "tok"
 
@@ -29,11 +30,30 @@ class AuthServiceTest {
     }
 
     @Test
+    fun `authenticate returns token when login matches email`() {
+        val repo = mockk<UserRepository>()
+        val encoder = mockk<PasswordEncoder>()
+        val tokenService = mockk<TokenService>()
+
+        val user = User(id = 5, login = "ivan", email = "ivan@example.com", emailVerified = true)
+        every { repo.findByLogin("ivan@example.com") } returns null
+        every { repo.findByEmail("ivan@example.com") } returns user
+        every { encoder.matches("pass", user.passwordHash) } returns true
+        every { tokenService.generateToken(user) } returns "tok"
+
+        val service = AuthService(repo, encoder, tokenService, SimpleMeterRegistry())
+        val token = service.authenticate("ivan@example.com", "pass")
+
+        assertEquals("tok", token)
+    }
+
+    @Test
     fun `authenticate throws when user not found`() {
         val repo = mockk<UserRepository>()
         val encoder = mockk<PasswordEncoder>()
         val tokenService = mockk<TokenService>()
         every { repo.findByLogin(any()) } returns null
+        every { repo.findByEmail(any()) } returns null
         val service = AuthService(repo, encoder, tokenService, SimpleMeterRegistry())
         assertThrows(IllegalArgumentException::class.java) { service.authenticate("no", "p") }
     }
@@ -45,6 +65,7 @@ class AuthServiceTest {
         val tokenService = mockk<TokenService>()
         val user = User(id = 1, login = "l", email = "e")
         every { repo.findByLogin("l") } returns user
+        every { repo.findByEmail("l") } returns null
         every { encoder.matches("bad", user.passwordHash) } returns false
         val service = AuthService(repo, encoder, tokenService, SimpleMeterRegistry())
         assertThrows(IllegalArgumentException::class.java) { service.authenticate("l", "bad") }

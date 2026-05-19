@@ -30,12 +30,12 @@ logging:
   config: classpath:monitoring/logback-spring.xml
 app:
   solution:
-    max-attempts: 50
+    max-attempts: 100
   zip-import:
     max-files: 1000
     max-entry-size: 5MB
   contest:
-    max-duration-hours: 5
+    max-duration-hours: 8
   resend:
     enabled: ${RESEND_ENABLED:false}
     api-key: ${RESEND_API_KEY:}

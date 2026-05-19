@@ -79,8 +79,8 @@ services: #раздел с описанием сервисов (контейне
       MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED: "true"
 
       # Custom app properties
-      MAX_ATTEMPTS: 100 # Пользовательская переменная (используется в приложении как maxAttempts)
-      MAX_DURATION_HOURS: 8 # Пользовательская переменная (используется в приложении как maxDurationHours)
+      APP_SOLUTION_MAX_ATTEMPTS: 100 # Пользовательская переменная (используется в приложении как maxAttempts)
+      APP_CONTEST_MAX_DURATION_HOURS: 8 # Пользовательская переменная (используется в приложении как maxDurationHours)
 
     healthcheck:
       test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health" ]

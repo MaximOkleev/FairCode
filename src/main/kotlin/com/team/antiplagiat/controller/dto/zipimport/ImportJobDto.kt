@@ -11,6 +11,8 @@ data class ImportJobDto(
     val importedSolutions: Int,
     val createdProblems: Int,
     val skippedFiles: Int,
+    val usersMatched: Int,
+    val usersNotFound: Int,
     val errors: List<String>
 )
 

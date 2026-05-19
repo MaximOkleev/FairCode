@@ -68,7 +68,7 @@ class ImportControllerTest {
 
         verify(importJobService).createJob(eq(1L), eq("Solutions.zip"))
         verify(importJobService).startJob(eq(1L), eq(1L))
-        verify(importJobService).completeJob(eq(1L), eq(1L), eq(2), eq(1), eq(0), eq(emptyList<String>()))
+        verify(importJobService).completeJob(eq(1L), eq(1L), eq(2), eq(1), eq(0), eq(2), eq(0), eq(emptyList<String>()))
     }
 
     @Test

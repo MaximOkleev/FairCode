@@ -19,6 +19,7 @@ class AuthService(
     fun authenticate(login: String, password: String): String {
         logger.debug { "Попытка аутентификации пользователя: $login" }
         val user = userRepository.findByLogin(login)
+            ?: userRepository.findByEmail(login)
             ?: run {
                 logger.warn { "Пользователь не найден: $login" }
                 meterRegistry.counter("auth.login.failed.not_found").increment()

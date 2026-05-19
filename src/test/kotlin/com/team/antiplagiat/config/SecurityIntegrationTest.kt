@@ -26,8 +26,8 @@ class SecurityIntegrationTest {
 
     @Test
     fun `should have ExceptionHandler as ControllerAdvice`() {
-        assertThat(applicationContext.containsBean("restExceptionHandler")).isTrue
-        val handler = applicationContext.getBean("restExceptionHandler")
+        assertThat(applicationContext.containsBean("globalExceptionHandler")).isTrue
+        val handler = applicationContext.getBean("globalExceptionHandler")
         assertThat(handler).isNotNull
     }
 

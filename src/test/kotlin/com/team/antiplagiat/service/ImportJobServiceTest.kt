@@ -59,13 +59,15 @@ class ImportJobServiceTest {
         val service = ImportJobService(repository, userRepository)
 
         // Act
-        service.completeJob(1L, 1L, 5, 2, 1, listOf("error1", "error2"))
+        service.completeJob(1L, 1L, 5, 2, 1, 4, 1, listOf("error1", "error2"))
 
         // Assert
         assertEquals(ImportJobStatus.COMPLETED, existingJob.status)
         assertEquals(5, existingJob.importedSolutions)
         assertEquals(2, existingJob.createdProblems)
         assertEquals(1, existingJob.skippedFiles)
+        assertEquals(4, existingJob.usersMatched)
+        assertEquals(1, existingJob.usersNotFound)
         assertNotNull(existingJob.errors)
     }
 
@@ -77,6 +79,8 @@ class ImportJobServiceTest {
             fileName = "solutions.zip",
             status = ImportJobStatus.COMPLETED,
             importedSolutions = 3,
+            usersMatched = 2,
+            usersNotFound = 1,
             errors = "error1\nerror2"
         )
 
@@ -93,6 +97,8 @@ class ImportJobServiceTest {
         assertEquals(1L, dto.id)
         assertEquals("COMPLETED", dto.status)
         assertEquals(3, dto.importedSolutions)
+        assertEquals(2, dto.usersMatched)
+        assertEquals(1, dto.usersNotFound)
         assertEquals(2, dto.errors.size)
         assertEquals("error1", dto.errors[0])
         assertEquals("error2", dto.errors[1])

@@ -109,6 +109,8 @@ CREATE TABLE IF NOT EXISTS import_jobs (
     imported_solutions INT NOT NULL DEFAULT 0,
     created_problems INT NOT NULL DEFAULT 0,
     skipped_files INT NOT NULL DEFAULT 0,
+    users_matched INT NOT NULL DEFAULT 0,
+    users_not_found INT NOT NULL DEFAULT 0,
     errors TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

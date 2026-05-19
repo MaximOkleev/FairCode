@@ -29,6 +29,11 @@ class ContestController(
         val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
 
+        if (payload.role != "ADMIN") {
+            logger.warn { "POST /api/contests - доступ запрещён пользователю ${payload.userId} (роль: ${payload.role})" }
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+        }
+
         logger.info { "POST /api/contests - создание контеста от администратора ${payload.userId}" }
         logger.debug { "Request: $request" }
 
@@ -96,7 +101,12 @@ class ContestController(
         val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
 
-        logger.info { "PUT /api/contests/$id - обновление от пользователя ${payload.userId}: name=$name, duration=$duration" }
+        if (payload.role != "ADMIN") {
+            logger.warn { "PUT /api/contests/$id - доступ запрещён пользователю ${payload.userId} (роль: ${payload.role})" }
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+        }
+
+        logger.info { "PUT /api/contests/$id - обновление от администратора ${payload.userId}: name=$name, duration=$duration" }
         logger.debug { "Параметры: id=$id, name=$name, duration=$duration" }
 
         val updated = contestService.update(id, name, duration) ?: run {
@@ -116,7 +126,12 @@ class ContestController(
         val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
 
-        logger.info { "DELETE /api/contests/$id - удаление от пользователя ${payload.userId}" }
+        if (payload.role != "ADMIN") {
+            logger.warn { "DELETE /api/contests/$id - доступ запрещён пользователю ${payload.userId} (роль: ${payload.role})" }
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+        }
+
+        logger.info { "DELETE /api/contests/$id - удаление от администратора ${payload.userId}" }
         logger.debug { "Удаление контеста" }
         contestService.delete(id)
         logger.info { "Контест удален: id=$id" }

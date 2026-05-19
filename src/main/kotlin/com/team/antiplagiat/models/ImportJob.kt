@@ -35,6 +35,12 @@ class ImportJob(
     @Column(name = "skipped_files", nullable = false)
     var skippedFiles: Int = 0,
 
+    @Column(name = "users_matched", nullable = false)
+    var usersMatched: Int = 0,
+
+    @Column(name = "users_not_found", nullable = false)
+    var usersNotFound: Int = 0,
+
     @Column(columnDefinition = "TEXT")
     var errors: String? = null,
 

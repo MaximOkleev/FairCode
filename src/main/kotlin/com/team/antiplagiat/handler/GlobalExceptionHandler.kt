@@ -4,9 +4,11 @@ import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.exception.TooManyAttemptsException
 import com.team.antiplagiat.filter.TraceIdFilter
 import io.github.oshai.kotlinlogging.KotlinLogging
+import jakarta.validation.ConstraintViolationException
 import org.slf4j.MDC
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -56,6 +58,51 @@ class GlobalExceptionHandler {
             .body(
                 ErrorResponse(
                     message = ex.message ?: "Превышен лимит попыток",
+                    traceId = traceId
+                )
+            )
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException::class)
+    fun handleDataIntegrityViolation(
+        ex: DataIntegrityViolationException
+    ): ResponseEntity<ErrorResponse> {
+
+        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+        val message = ex.rootCause?.message ?: ex.message ?: "Конфликт данных"
+
+        logger.warn {
+            "DataIntegrityViolationException | traceId=$traceId | message=$message"
+        }
+
+        return ResponseEntity
+            .status(HttpStatus.CONFLICT)
+            .body(
+                ErrorResponse(
+                    message = message,
+                    traceId = traceId
+                )
+            )
+    }
+
+    @ExceptionHandler(ConstraintViolationException::class)
+    fun handleConstraintViolation(
+        ex: ConstraintViolationException
+    ): ResponseEntity<ErrorResponse> {
+
+        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+        val violations = ex.constraintViolations
+            .joinToString("; ") { "${it.propertyPath}: ${it.message}" }
+
+        logger.warn {
+            "ConstraintViolationException | traceId=$traceId | violations=$violations"
+        }
+
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(
+                ErrorResponse(
+                    message = violations.ifBlank { "Ошибка валидации ограничений" },
                     traceId = traceId
                 )
             )
@@ -157,8 +204,6 @@ class GlobalExceptionHandler {
 
         val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
 
-        // Печать полного stacktrace в консоль
-        ex.printStackTrace()
 
         logger.error(ex) {
             "Необработанное исключение | traceId=$traceId | ${ex.javaClass.simpleName}: ${ex.message}"

@@ -53,6 +53,8 @@ class ImportJobService(
         importedSolutions: Int,
         createdProblems: Int,
         skippedFiles: Int,
+        usersMatched: Int,
+        usersNotFound: Int,
         errors: List<String>
     ) {
         val job = importJobRepository.findByIdAndAdminId(jobId, adminId)
@@ -62,6 +64,8 @@ class ImportJobService(
         job.importedSolutions = importedSolutions
         job.createdProblems = createdProblems
         job.skippedFiles = skippedFiles
+        job.usersMatched = usersMatched
+        job.usersNotFound = usersNotFound
         job.errors = if (errors.isNotEmpty()) errors.joinToString("\n") else null
         job.finishedAt = LocalDateTime.now()
 
@@ -118,6 +122,8 @@ class ImportJobService(
             importedSolutions = job.importedSolutions,
             createdProblems = job.createdProblems,
             skippedFiles = job.skippedFiles,
+            usersMatched = job.usersMatched,
+            usersNotFound = job.usersNotFound,
             errors = errorsList
         )
     }
