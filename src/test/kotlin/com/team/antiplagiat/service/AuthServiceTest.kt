@@ -12,6 +12,7 @@ import io.mockk.verify
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.springframework.security.crypto.password.PasswordEncoder
+import java.util.Optional
 
 class AuthServiceTest {
 
@@ -103,5 +104,45 @@ class AuthServiceTest {
         val service = AuthService(repo, encoder, tokenService, securityAlertService, SimpleMeterRegistry())
         org.junit.jupiter.api.assertThrows<com.team.antiplagiat.exception.InvalidCredentialsException> { service.authenticate("l", "bad") }
         verify(exactly = 0) { securityAlertService.sendLoginAlert(any()) }
+    }
+
+    @Test
+    fun `changePassword updates password hash when old password valid`() {
+        val repo = mockk<UserRepository>()
+        val encoder = mockk<PasswordEncoder>()
+        val tokenService = mockk<TokenService>()
+        val securityAlertService = mockk<SecurityAlertService>()
+        val user = User(id = 1, login = "l", email = "e", passwordHash = "old-hash")
+
+        every { repo.findById(1L) } returns Optional.of(user)
+        every { encoder.matches("old-pass", "old-hash") } returns true
+        every { encoder.encode("new-pass") } returns "new-hash"
+        every { repo.save(user) } returns user
+
+        val service = AuthService(repo, encoder, tokenService, securityAlertService, SimpleMeterRegistry())
+        service.changePassword(1L, "old-pass", "new-pass")
+
+        assertEquals("new-hash", user.passwordHash)
+        verify(exactly = 1) { repo.save(user) }
+    }
+
+    @Test
+    fun `changePassword throws when old password invalid`() {
+        val repo = mockk<UserRepository>()
+        val encoder = mockk<PasswordEncoder>()
+        val tokenService = mockk<TokenService>()
+        val securityAlertService = mockk<SecurityAlertService>()
+        val user = User(id = 1, login = "l", email = "e", passwordHash = "old-hash")
+
+        every { repo.findById(1L) } returns Optional.of(user)
+        every { encoder.matches("wrong-pass", "old-hash") } returns false
+
+        val service = AuthService(repo, encoder, tokenService, securityAlertService, SimpleMeterRegistry())
+
+        org.junit.jupiter.api.assertThrows<com.team.antiplagiat.exception.InvalidCredentialsException> {
+            service.changePassword(1L, "wrong-pass", "new-pass")
+        }
+        verify(exactly = 0) { encoder.encode(any()) }
+        verify(exactly = 0) { repo.save(any()) }
     }
 }

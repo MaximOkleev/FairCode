@@ -1,8 +1,9 @@
 package com.team.antiplagiat.controller
 
+import com.team.antiplagiat.config.TokenPayloadExtractor
+import com.team.antiplagiat.controller.dto.auth.ChangePasswordRequest
 import com.team.antiplagiat.controller.dto.auth.LoginRequest
 import com.team.antiplagiat.controller.dto.auth.LoginResponse
-import com.team.antiplagiat.controller.dto.auth.VerifyEmailRequest
 import com.team.antiplagiat.controller.dto.auth.VerifyEmailResponse
 import com.team.antiplagiat.service.AuthService
 import com.team.antiplagiat.service.EmailVerificationService
@@ -10,7 +11,9 @@ import com.team.antiplagiat.config.TokenService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
@@ -37,6 +40,20 @@ class AuthController(
         val token = authService.authenticate(request.login, request.password)
         logger.info { "Пользователь успешно вошел" }
         return ResponseEntity.ok(LoginResponse(token = token))
+    }
+
+    @PostMapping("/change-password")
+    @Operation(summary = "Изменить пароль текущего пользователя")
+    fun changePassword(
+        @Valid @RequestBody request: ChangePasswordRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<Map<String, String>> {
+        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+        logger.info { "POST /api/auth/change-password - смена пароля для пользователя ${payload.userId}" }
+        authService.changePassword(payload.userId, request.oldPassword, request.newPassword)
+        return ResponseEntity.ok(mapOf("message" to "Password changed successfully"))
     }
 
     @GetMapping("/verify-email")

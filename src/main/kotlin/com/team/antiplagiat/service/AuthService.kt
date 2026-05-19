@@ -7,6 +7,8 @@ import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import com.team.antiplagiat.exception.InvalidCredentialsException
+import com.team.antiplagiat.exception.ResourceNotFoundException
+import org.springframework.transaction.annotation.Transactional
 
 private val logger = KotlinLogging.logger {}
 
@@ -56,6 +58,24 @@ class AuthService(
             meterRegistry.counter("auth.login.security_alert.failed").increment()
         }
         return tokenService.generateToken(user)
+    }
+
+    @Transactional
+    fun changePassword(userId: Long, oldPassword: String, newPassword: String) {
+        logger.info { "Попытка смены пароля для пользователя $userId" }
+        val user = userRepository.findById(userId)
+            .orElseThrow { ResourceNotFoundException("Пользователь с id=$userId не найден") }
+
+        if (!passwordEncoder.matches(oldPassword, user.passwordHash)) {
+            logger.warn { "Неверный текущий пароль при смене пароля для пользователя $userId" }
+            meterRegistry.counter("auth.password_change.failed.invalid_password").increment()
+            throw InvalidCredentialsException()
+        }
+
+        user.passwordHash = passwordEncoder.encode(newPassword)
+        userRepository.save(user)
+        meterRegistry.counter("auth.password_change.success").increment()
+        logger.info { "Пароль успешно изменён для пользователя $userId" }
     }
 }
 
