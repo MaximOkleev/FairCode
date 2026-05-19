@@ -3,6 +3,7 @@ package com.team.antiplagiat.controller
 import com.team.antiplagiat.config.TokenPayloadExtractor
 import com.team.antiplagiat.controller.dto.plagiarism.PlagiarismCheckSummaryResponse
 import com.team.antiplagiat.controller.dto.plagiarism.PlagiarismGroupResponse
+import com.team.antiplagiat.controller.dto.plagiarism.PlagiarismSimpleResultResponse
 import com.team.antiplagiat.service.PlagiarismService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -75,5 +76,21 @@ class PlagiarismController(
         }
 
         return ResponseEntity.ok(plagiarismService.findCheaterGroups())
+    }
+
+    @GetMapping("/results")
+    @Operation(
+        summary = "Get simple plagiarism results",
+        description = "Returns list of matched pairs from the latest completed plagiarism run. Each item contains problem name, two user logins and similarity in percent (0.0 - 100.0)."
+    )
+    fun getResults(httpRequest: HttpServletRequest): ResponseEntity<List<PlagiarismSimpleResultResponse>> {
+        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+        if (payload.role != "ADMIN") {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+        }
+
+        return ResponseEntity.ok(plagiarismService.findLatestResults())
     }
 }

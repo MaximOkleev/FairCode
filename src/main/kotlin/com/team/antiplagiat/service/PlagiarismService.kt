@@ -10,6 +10,8 @@ import com.team.antiplagiat.repository.PlagiarismCheckRunRepository
 import com.team.antiplagiat.repository.PlagiarismMatchRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import com.team.antiplagiat.controller.dto.plagiarism.PlagiarismSimpleResultResponse
+
 
 @Service
 class PlagiarismService(
@@ -39,5 +41,22 @@ class PlagiarismService(
             ?: return emptyList()
 
         return PlagiarismGrouping.buildGroups(plagiarismMatchRepository.findAllByCheckRun(latestCompletedRun))
+    }
+
+    @Transactional(readOnly = true)
+    fun findLatestResults(): List<PlagiarismSimpleResultResponse> {
+        val latestCompletedRun = plagiarismCheckRunRepository
+            .findFirstByStatusOrderByFinishedAtDesc(PlagiarismCheckRunStatus.COMPLETED)
+            ?: return emptyList()
+
+        val matches = plagiarismMatchRepository.findAllByCheckRun(latestCompletedRun)
+        return matches.map { m ->
+            PlagiarismSimpleResultResponse(
+                problem = m.firstSolution.problem.name,
+                user1 = m.firstSolution.user.login,
+                user2 = m.secondSolution.user.login,
+                similarity = m.similarity * 100.0
+            )
+        }
     }
 }
