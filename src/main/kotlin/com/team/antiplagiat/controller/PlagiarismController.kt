@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import com.team.antiplagiat.controller.dto.plagiarism.PlagiarismCheckStartResponse
 
 @RestController
 @RequestMapping("/api/plagiarism")
@@ -26,13 +27,13 @@ class PlagiarismController(
 
     @PostMapping("/check")
     @Operation(
-        summary = "Run full plagiarism check",
-        description = "Admin endpoint. Recalculates matches between solutions for the same problem and language."
+        summary = "Start full plagiarism check",
+        description = "Admin endpoint. Starts async plagiarism check between solutions for the same problem and language. Use GET /api/plagiarism/runs/{runId} to check status."
     )
     fun runFullCheck(
         @RequestParam(defaultValue = "0.8") threshold: Double,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<PlagiarismCheckSummaryResponse> {
+    ): ResponseEntity<PlagiarismCheckStartResponse> {
         val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
 
@@ -40,7 +41,9 @@ class PlagiarismController(
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
         }
 
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(plagiarismService.startFullCheck(threshold))
+        return ResponseEntity
+            .status(HttpStatus.ACCEPTED)
+            .body(plagiarismService.startFullCheck(threshold))
     }
 
     @GetMapping("/runs/{runId}")

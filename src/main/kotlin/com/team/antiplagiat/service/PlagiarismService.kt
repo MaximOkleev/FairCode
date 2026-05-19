@@ -11,6 +11,7 @@ import com.team.antiplagiat.repository.PlagiarismMatchRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import com.team.antiplagiat.controller.dto.plagiarism.PlagiarismSimpleResultResponse
+import com.team.antiplagiat.controller.dto.plagiarism.PlagiarismCheckStartResponse
 
 
 @Service
@@ -20,12 +21,22 @@ class PlagiarismService(
     private val plagiarismCheckRunner: PlagiarismCheckRunner
 ) {
 
-    fun startFullCheck(threshold: Double = CodePlagiarismDetector.DEFAULT_THRESHOLD): PlagiarismCheckSummaryResponse {
+    fun startFullCheck(
+        threshold: Double = CodePlagiarismDetector.DEFAULT_THRESHOLD
+    ): PlagiarismCheckStartResponse {
         require(threshold in 0.0..1.0) { "threshold must be in range 0.0..1.0" }
 
-        val run = plagiarismCheckRunRepository.save(PlagiarismCheckRun(threshold = threshold))
+        val run = plagiarismCheckRunRepository.save(
+            PlagiarismCheckRun(threshold = threshold)
+        )
+
         plagiarismCheckRunner.run(run.id)
-        return PlagiarismCheckSummaryResponse.fromEntity(run)
+
+        return PlagiarismCheckStartResponse(
+            runId = run.id,
+            status = run.status.name,
+            message = "Plagiarism check started. Use GET /api/plagiarism/runs/${run.id} to check status."
+        )
     }
 
     @Transactional(readOnly = true)
