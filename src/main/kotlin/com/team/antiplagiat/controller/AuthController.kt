@@ -34,66 +34,27 @@ class AuthController(
     @Operation(summary = "Войти по логину и паролю, получить токен")
     fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<LoginResponse> {
         logger.info { "POST /api/auth/login - попытка входа" }
-        return try {
-            val token = authService.authenticate(request.login, request.password)
-            logger.info { "Пользователь успешно вошел" }
-            ResponseEntity.ok(LoginResponse(token = token))
-        } catch (e: com.team.antiplagiat.service.EmailNotVerifiedException) {
-            logger.info { "Email не подтверждён, отправляем письмо верификации" }
-            try {
-                emailVerificationService.sendVerification(e.email)
-                ResponseEntity.status(403).body(
-                    LoginResponse(
-                        token = "",
-                        message = e.message
-                    )
-                )
-            } catch (rateLimitException: IllegalStateException) {
-                logger.warn { "Слишком частая попытка отправки письма: ${rateLimitException.message}" }
-                ResponseEntity.status(429).body(
-                    LoginResponse(
-                        token = "",
-                        message = rateLimitException.message
-                    )
-                )
-            }
-        }
+        val token = authService.authenticate(request.login, request.password)
+        logger.info { "Пользователь успешно вошел" }
+        return ResponseEntity.ok(LoginResponse(token = token))
     }
 
     @GetMapping("/verify-email")
     @Operation(summary = "Подтвердить email по ссылке из письма")
     fun verifyEmailFromLink(@RequestParam token: String): ResponseEntity<VerifyEmailResponse> {
-        return try {
-            logger.info { "GET /api/auth/verify-email - подтверждение email по ссылке" }
-            val userId = emailVerificationService.verify(token)
-            logger.info { "Email успешно подтверждён по ссылке для пользователя $userId" }
-            val user = emailVerificationService.getUserById(userId)
-            val authToken = tokenService.generateToken(user)
+        logger.info { "GET /api/auth/verify-email - подтверждение email по ссылке" }
+        val userId = emailVerificationService.verify(token)
+        logger.info { "Email успешно подтверждён по ссылке для пользователя $userId" }
+        val user = emailVerificationService.getUserById(userId)
+        val authToken = tokenService.generateToken(user)
 
-            ResponseEntity.ok(
-                VerifyEmailResponse(
-                    message = "Email verified successfully",
-                    success = true,
-                    userId = userId,
-                    token = authToken
-                )
+        return ResponseEntity.ok(
+            VerifyEmailResponse(
+                message = "Email verified successfully",
+                success = true,
+                userId = userId,
+                token = authToken
             )
-        } catch (e: IllegalArgumentException) {
-            logger.warn { "Ошибка верификации: ${e.message}" }
-            ResponseEntity.badRequest().body(
-                VerifyEmailResponse(
-                    message = "Invalid Token: ${e.message}",
-                    success = false
-                )
-            )
-        } catch (e: IllegalStateException) {
-            logger.warn { "Ошибка верификации: ${e.message}" }
-            ResponseEntity.badRequest().body(
-                VerifyEmailResponse(
-                    message = e.message ?: "Verification failed",
-                    success = false
-                )
-            )
-        }
+        )
     }
 }

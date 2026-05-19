@@ -55,7 +55,7 @@ class AuthServiceTest {
         every { repo.findByLogin(any()) } returns null
         every { repo.findByEmail(any()) } returns null
         val service = AuthService(repo, encoder, tokenService, SimpleMeterRegistry())
-        assertThrows(IllegalArgumentException::class.java) { service.authenticate("no", "p") }
+        org.junit.jupiter.api.assertThrows<com.team.antiplagiat.exception.InvalidCredentialsException> { service.authenticate("no", "p") }
     }
 
     @Test
@@ -68,6 +68,6 @@ class AuthServiceTest {
         every { repo.findByEmail("l") } returns null
         every { encoder.matches("bad", user.passwordHash) } returns false
         val service = AuthService(repo, encoder, tokenService, SimpleMeterRegistry())
-        assertThrows(IllegalArgumentException::class.java) { service.authenticate("l", "bad") }
+        org.junit.jupiter.api.assertThrows<com.team.antiplagiat.exception.InvalidCredentialsException> { service.authenticate("l", "bad") }
     }
 }

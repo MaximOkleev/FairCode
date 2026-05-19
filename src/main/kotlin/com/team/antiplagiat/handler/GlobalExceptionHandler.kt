@@ -1,5 +1,6 @@
 package com.team.antiplagiat.handler
 
+import com.team.antiplagiat.exception.ImportFailedException
 import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.exception.InvalidCredentialsException
 import com.team.antiplagiat.exception.TooManyAttemptsException
@@ -145,6 +146,66 @@ class GlobalExceptionHandler {
             .body(
                 ErrorResponse(
                     message = ex.message ?: "Invalid email or password",
+                    traceId = traceId
+                )
+            )
+    }
+
+    @ExceptionHandler(com.team.antiplagiat.service.EmailNotVerifiedException::class)
+    fun handleEmailNotVerified(
+        ex: com.team.antiplagiat.service.EmailNotVerifiedException
+    ): ResponseEntity<ErrorResponse> {
+        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+
+        logger.warn {
+            "EmailNotVerifiedException | traceId=$traceId | email=${ex.email}"
+        }
+
+        return ResponseEntity
+            .status(HttpStatus.FORBIDDEN)
+            .body(
+                ErrorResponse(
+                    message = ex.message ?: "Email is not verified",
+                    traceId = traceId
+                )
+            )
+    }
+
+    @ExceptionHandler(IllegalStateException::class)
+    fun handleIllegalState(
+        ex: IllegalStateException
+    ): ResponseEntity<ErrorResponse> {
+        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+
+        logger.warn {
+            "IllegalStateException | traceId=$traceId | message=${ex.message}"
+        }
+
+        return ResponseEntity
+            .status(HttpStatus.TOO_MANY_REQUESTS)
+            .body(
+                ErrorResponse(
+                    message = ex.message ?: "Too many requests",
+                    traceId = traceId
+                )
+            )
+    }
+
+    @ExceptionHandler(ImportFailedException::class)
+    fun handleImportFailed(
+        ex: ImportFailedException
+    ): ResponseEntity<ErrorResponse> {
+        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+
+        logger.error(ex) {
+            "ImportFailedException | traceId=$traceId | message=${ex.message}"
+        }
+
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(
+                ErrorResponse(
+                    message = ex.message ?: "ZIP import failed",
                     traceId = traceId
                 )
             )

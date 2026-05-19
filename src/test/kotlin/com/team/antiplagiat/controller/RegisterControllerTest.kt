@@ -17,6 +17,7 @@ class RegisterControllerTest {
         val registerService = mockk<RegisterService>()
         val response = RegisterResponse(
             userId = 123L,
+            login = "testuser",
             email = "test@example.com",
             message = "Пользователь зарегистрирован. Проверьте почту для подтверждения email",
             emailVerificationRequired = true
@@ -39,9 +40,9 @@ class RegisterControllerTest {
 
         val controller = RegisterController(registerService)
         val request = RegisterRequest(email = "existing@example.com", password = "password123")
-        val result = controller.register(request)
-
-        assertEquals(HttpStatus.BAD_REQUEST, result.statusCode)
+        org.junit.jupiter.api.assertThrows<IllegalArgumentException> {
+            controller.register(request)
+        }
     }
 
     @Test
@@ -51,8 +52,8 @@ class RegisterControllerTest {
 
         val controller = RegisterController(registerService)
         val request = RegisterRequest(email = "test@example.com", password = "password123")
-        val result = controller.register(request)
-
-        assertEquals(429, result.statusCodeValue)
+        org.junit.jupiter.api.assertThrows<IllegalStateException> {
+            controller.register(request)
+        }
     }
 }

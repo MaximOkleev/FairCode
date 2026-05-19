@@ -34,6 +34,7 @@ class RegisterDtoTest {
     fun `register response keeps fields`() {
         val response = RegisterResponse(
             userId = 42L,
+            login = "user",
             email = "user@example.com",
             message = "Пользователь зарегистрирован. Проверьте почту для подтверждения email",
             emailVerificationRequired = true

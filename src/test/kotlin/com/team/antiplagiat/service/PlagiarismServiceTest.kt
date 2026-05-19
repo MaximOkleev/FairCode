@@ -47,8 +47,8 @@ class PlagiarismServiceTest {
         val result = plagiarismService.startFullCheck(0.75)
 
         assertEquals(42L, result.runId)
-        assertEquals(PlagiarismCheckRunStatus.PENDING, result.status)
-        assertEquals(0.75, result.threshold)
+        // startFullCheck returns PlagiarismCheckStartResponse with status as string
+        assertEquals(PlagiarismCheckRunStatus.PENDING.name, result.status)
         verify(exactly = 1) { plagiarismCheckRunner.run(42L) }
     }
 

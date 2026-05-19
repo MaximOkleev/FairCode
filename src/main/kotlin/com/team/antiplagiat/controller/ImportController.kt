@@ -8,6 +8,7 @@ import com.team.antiplagiat.service.ZipImportService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
+import com.team.antiplagiat.exception.ImportFailedException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus
@@ -71,7 +72,9 @@ class ImportController(
             ResponseEntity.ok(response)
         } catch (ex: Exception) {
             importJobService.failJob(job.id, payload.userId, ex.message ?: "ZIP import failed")
-            throw ex
+            // Оборачиваем оригинальное исключение в ImportFailedException, чтобы глобальный обработчик
+            // вернул понятный JSON с message и traceId, а не пустой 500.
+            throw ImportFailedException(ex.message ?: "ZIP import failed", ex)
         }
     }
 
@@ -112,8 +115,10 @@ class ImportController(
         return try {
             val history = importJobService.getJobHistory(payload.userId, pageable)
             ResponseEntity.ok(history)
-        } catch (_: Exception) {
-            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
+        } catch (ex: Exception) {
+            // Пробрасываем специализированное исключение, чтобы GlobalExceptionHandler
+            // вернул понятный JSON с message и traceId
+            throw ImportFailedException(ex.message ?: "Failed to get import job history", ex)
         }
     }
 }

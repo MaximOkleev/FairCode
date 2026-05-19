@@ -11,13 +11,14 @@ class UserDtoTest {
 
     @Test
     fun `UserRequest toEntity should create User correctly`() {
-        val request = UserRequest(
+        // Use root DTO (from com.team.antiplagiat.controller.dto) to test mapping
+        val request = RootUserRequest(
             login = "testuser",
             email = "test@example.com",
             role = User.Role.BASIC
         )
 
-        val user = request.toEntity()
+        val user = request.toRootEntity()
 
         assertEquals("testuser", user.login)
         assertEquals("test@example.com", user.email)

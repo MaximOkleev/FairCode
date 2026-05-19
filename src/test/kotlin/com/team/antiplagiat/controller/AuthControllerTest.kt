@@ -29,15 +29,16 @@ class AuthControllerTest {
     }
 
     @Test
-    fun `login returns 401 on invalid credentials`() {
+    fun `login throws on invalid credentials`() {
         val authService = mockk<AuthService>()
         val emailVerificationService = mockk<EmailVerificationService>()
         val tokenService = mockk<TokenService>()
-        every { authService.authenticate("u", "p") } throws IllegalArgumentException("bad creds")
+        every { authService.authenticate("u", "p") } throws com.team.antiplagiat.exception.InvalidCredentialsException()
 
         val controller = AuthController(authService, emailVerificationService, tokenService)
         val req = LoginRequest(login = "u", password = "p")
-        val resp: ResponseEntity<*> = controller.login(req)
-        assertEquals(401, resp.statusCodeValue)
+        org.junit.jupiter.api.assertThrows<com.team.antiplagiat.exception.InvalidCredentialsException> {
+            controller.login(req)
+        }
     }
 }

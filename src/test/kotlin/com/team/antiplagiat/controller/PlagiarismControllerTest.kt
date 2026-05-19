@@ -72,21 +72,13 @@ class PlagiarismControllerTest {
 
     @Test
     fun `runFullCheck should return 202 for admin`() {
-        val summary = PlagiarismCheckSummaryResponse(
+        val start = com.team.antiplagiat.controller.dto.plagiarism.PlagiarismCheckStartResponse(
             runId = 1L,
-            status = PlagiarismCheckRunStatus.COMPLETED,
-            checkedSolutions = 0,
-            comparedPairs = 0,
-            matches = 0,
-            groups = 0,
-            threshold = 0.8,
-            errorMessage = null,
-            createdAt = LocalDateTime.now(),
-            startedAt = null,
-            finishedAt = null
+            status = PlagiarismCheckRunStatus.COMPLETED.name,
+            message = "Plagiarism check started"
         )
 
-        whenever(plagiarismService.startFullCheck(0.8)).thenReturn(summary)
+        whenever(plagiarismService.startFullCheck(0.8)).thenReturn(start)
 
         mockMvc.perform(
             post("/api/plagiarism/check")
