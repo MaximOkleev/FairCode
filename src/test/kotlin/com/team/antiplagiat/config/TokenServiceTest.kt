@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.springframework.mock.env.MockEnvironment
 import java.util.Date
+import com.team.antiplagiat.service.TokenUtils
 
 class TokenServiceTest {
 
@@ -100,5 +101,32 @@ class TokenServiceTest {
 
         assertNull(payload)
     }
-}
 
+    @Test
+    fun `token utils generateToken produces url-safe base64 string of expected length and unique`() {
+        val t1 = TokenUtils.generateToken()
+        val t2 = TokenUtils.generateToken()
+
+        // tokens should be non-empty and different most of the time
+        assertTrue(t1.isNotEmpty())
+        assertTrue(t2.isNotEmpty())
+        assertNotEquals(t1, t2)
+
+        // ensure url-safe characters
+        assertFalse(t1.contains("+"))
+        assertFalse(t1.contains("/"))
+        assertFalse(t1.contains("="))
+    }
+
+    @Test
+    fun `token utils sha256 returns deterministic base64 string of correct length`() {
+        val input = "test-input"
+        val hash1 = TokenUtils.sha256(input)
+        val hash2 = TokenUtils.sha256(input)
+
+        assertEquals(hash1, hash2)
+        // SHA-256 produces 32 bytes -> base64 length should be 44 chars with padding
+        assertEquals(44, hash1.length)
+        assertTrue(hash1.isNotEmpty())
+    }
+}

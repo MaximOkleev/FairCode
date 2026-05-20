@@ -58,4 +58,3 @@ class ImportFailedExceptionTest {
         assertEquals("Import failed", exception.message)
     }
 }
-
