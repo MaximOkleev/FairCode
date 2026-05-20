@@ -88,7 +88,8 @@ class SecurityConfig(private val env: Environment) {
                 "/actuator/health",
                 "/actuator/prometheus",
                 "/api/register",
-                "/api/auth/**",
+                "/api/auth/login",
+                "/api/auth/verify-email",
                 "/v3/api-docs/**",
                 "/swagger-ui/**",
                 "/swagger-ui.html"

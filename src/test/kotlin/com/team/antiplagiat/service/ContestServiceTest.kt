@@ -1,6 +1,7 @@
 package com.team.antiplagiat.service
 
 import com.team.antiplagiat.config.ContestConfig
+import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.models.Contest
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.repository.ContestRepository
@@ -16,6 +17,7 @@ import io.mockk.just
 import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -234,13 +236,21 @@ class ContestServiceTest {
         verify(exactly = 0) { contestRepository.save(any()) }
     }
 
-    @Test
-    fun `delete calls repository deleteById in contest service`() {
-        every { contestRepository.deleteById(1L) } just Runs
+     @Test
+     fun `delete throws ResourceNotFoundException for missing contest`() {
+         every { contestRepository.existsById(99L) } returns false
 
-        contestService.delete(1L)
+         assertThrows(ResourceNotFoundException::class.java) { contestService.delete(99L) }
+         verify(exactly = 0) { contestRepository.deleteById(any()) }
+     }
 
-        verify(exactly = 1) { contestRepository.deleteById(1L) }
-    }
+      @Test
+      fun `delete calls repository deleteById in contest service`() {
+          every { contestRepository.existsById(1L) } returns true
+          every { contestRepository.deleteById(1L) } just Runs
+
+          contestService.delete(1L)
+
+          verify(exactly = 1) { contestRepository.deleteById(1L) }
+      }
 }
-

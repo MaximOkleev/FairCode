@@ -143,47 +143,45 @@ class SolutionController(private val solutionService: SolutionService) {
         return ResponseEntity.ok(solutions.map { SolutionResponse.fromEntity(it) })
     }
 
-    @PatchMapping("/{id}/status")
-    @Operation(
-        summary = "Обновить статус решения",
-        description = "Изменяет статус проверки решения (PENDING, CHECKING, COMPLETED, PLAGIARISM_DETECTED). Только для администраторов."
-    )
-    @ApiResponses(
-        value = [
-            ApiResponse(responseCode = "200", description = "Статус успешно обновлен"),
-            ApiResponse(responseCode = "400", description = "Неверный статус"),
-            ApiResponse(responseCode = "401", description = "Не авторизирован"),
-            ApiResponse(responseCode = "403", description = "Запрещено"),
-            ApiResponse(responseCode = "404", description = "Решение не найдено")
-        ]
-    )
-    fun updateStatus(
-        @Parameter(description = "ID решения", example = "1")
-        @PathVariable id: Long,
-        @Parameter(description = "Новый статус", example = "COMPLETED")
-        @RequestParam status: String,
-        httpRequest: HttpServletRequest
-    ): ResponseEntity<SolutionResponse> {
-        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+     @PatchMapping("/{id}/status")
+     @Operation(
+         summary = "Обновить статус решения",
+         description = "Изменяет статус проверки решения (PENDING, CHECKING, COMPLETED, PLAGIARISM_DETECTED). Только для администраторов."
+     )
+     @ApiResponses(
+         value = [
+             ApiResponse(responseCode = "200", description = "Статус успешно обновлен"),
+             ApiResponse(responseCode = "400", description = "Неверный статус"),
+             ApiResponse(responseCode = "401", description = "Не авторизирован"),
+             ApiResponse(responseCode = "403", description = "Запрещено"),
+             ApiResponse(responseCode = "404", description = "Решение не найдено")
+         ]
+     )
+     fun updateStatus(
+         @Parameter(description = "ID решения", example = "1")
+         @PathVariable id: Long,
+         @Parameter(description = "Новый статус", example = "COMPLETED")
+         @RequestParam status: String,
+         httpRequest: HttpServletRequest
+     ): ResponseEntity<SolutionResponse> {
+         val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+         if (payload.role != "ADMIN") {
+             return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+         }
 
-        logger.info { "PATCH /api/solutions/$id/status - администратор ${payload.userId} меняет статус на $status" }
-        // Только администраторы могут обновлять статус
-        if (payload.role != "ADMIN") {
-            logger.warn { "Пользователь ${payload.userId} попытался обновить статус решения (требуется ADMIN)" }
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-        }
+         logger.info { "PATCH /api/solutions/$id/status - администратор ${payload.userId} меняет статус на $status" }
 
-        val solutionStatus = try {
-            SolutionStatus.valueOf(status.uppercase())
-        } catch (e: IllegalArgumentException) {
-            logger.warn { "Неизвестный статус: $status" }
-            throw IllegalArgumentException("Неизвестный статус: $status")
-        }
-        val updated = solutionService.updateStatus(id, solutionStatus)
-        logger.info { "Статус решения $id обновлен на ${updated.status}" }
-        return ResponseEntity.ok(SolutionResponse.fromEntity(updated))
-    }
+         val solutionStatus = try {
+             SolutionStatus.valueOf(status.uppercase())
+         } catch (e: IllegalArgumentException) {
+             logger.warn { "Неизвестный статус: $status" }
+             throw IllegalArgumentException("Неизвестный статус: $status")
+         }
+         val updated = solutionService.updateStatus(id, solutionStatus)
+         logger.info { "Статус решения $id обновлен на ${updated.status}" }
+         return ResponseEntity.ok(SolutionResponse.fromEntity(updated))
+     }
 
     @DeleteMapping("/{id}")
     @Operation(

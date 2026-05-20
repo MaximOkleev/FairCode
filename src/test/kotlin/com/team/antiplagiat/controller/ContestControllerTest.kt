@@ -23,6 +23,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import jakarta.servlet.http.HttpServletRequest
 import com.team.antiplagiat.config.TokenPayload
 import org.springframework.http.HttpStatus
+import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 
 @WebMvcTest(ContestController::class)
 class ContestControllerTest {
@@ -39,8 +42,19 @@ class ContestControllerTest {
     @MockitoBean
     private lateinit var userService: UserService
 
+    private fun setSecurityContext(userId: Long, role: String = "ADMIN") {
+        val authorities = listOf(SimpleGrantedAuthority("ROLE_$role"))
+        val auth = UsernamePasswordAuthenticationToken(userId, null, authorities)
+        SecurityContextHolder.getContext().authentication = auth
+    }
+
+    private fun clearSecurityContext() {
+        SecurityContextHolder.clearContext()
+    }
+
     @BeforeEach
     fun setUp() {
+        clearSecurityContext()
         reset(contestService, userService)
     }
 
@@ -70,6 +84,9 @@ class ContestControllerTest {
 
         whenever(userService.findById(1L)).thenReturn(admin)
         whenever(contestService.create(any())).thenReturn(contest)
+
+        // Set security context with ADMIN role
+        setSecurityContext(userId = 1L, role = "ADMIN")
 
         mockMvc.perform(
             post("/api/contests")
@@ -287,6 +304,9 @@ class ContestControllerTest {
 
         whenever(contestService.update(eq(1L), eq("Updated Contest"), eq(150L))).thenReturn(updatedContest)
 
+        // Set security context with ADMIN role
+        setSecurityContext(userId = 1L, role = "ADMIN")
+
         mockMvc.perform(
             put("/api/contests/1")
                 .param("name", "Updated Contest")
@@ -325,6 +345,9 @@ class ContestControllerTest {
     @Test
     fun `delete should return 204 when contest exists`() {
         doNothing().whenever(contestService).delete(1L)
+
+        // Set security context with ADMIN role
+        setSecurityContext(userId = 1L, role = "ADMIN")
 
         mockMvc.perform(delete("/api/contests/1").requestAttr("tokenPayload", TokenPayload(
             userId = 1L,

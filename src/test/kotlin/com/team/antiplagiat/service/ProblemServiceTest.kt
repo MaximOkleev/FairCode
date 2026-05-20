@@ -1,5 +1,6 @@
 package com.team.antiplagiat.service
 
+import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.repository.ProblemRepository
 import io.micrometer.core.instrument.MeterRegistry
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -197,20 +199,21 @@ class ProblemServiceTest {
         assertEquals("Find the sum of two numbers", result?.description)
     }
 
-    @Test
-    fun `delete calls repository for existing id`() {
-        every { problemRepository.deleteById(1L) } just Runs
+     @Test
+     fun `delete throws ResourceNotFoundException for missing id`() {
+         every { problemRepository.existsById(99L) } returns false
 
-        problemService.delete(1L)
+         assertThrows(ResourceNotFoundException::class.java) { problemService.delete(99L) }
+         verify(exactly = 0) { problemRepository.deleteById(any()) }
+     }
 
-        verify(exactly = 1) { problemRepository.deleteById(1L) }
-    }
+      @Test
+      fun `delete calls repository for existing id`() {
+          every { problemRepository.existsById(1L) } returns true
+          every { problemRepository.deleteById(1L) } just Runs
 
-    @Test
-    fun `delete does not throw for missing id`() {
-        every { problemRepository.deleteById(99L) } just Runs
+          problemService.delete(1L)
 
-        assertDoesNotThrow { problemService.delete(99L) }
-        verify(exactly = 1) { problemRepository.deleteById(99L) }
-    }
+          verify(exactly = 1) { problemRepository.deleteById(1L) }
+      }
 }

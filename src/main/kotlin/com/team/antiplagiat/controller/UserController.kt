@@ -6,6 +6,7 @@ import com.team.antiplagiat.controller.dto.user.UserResponse
 import com.team.antiplagiat.service.UserService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -53,12 +54,12 @@ class UserController(private val userService: UserService) {
         return ResponseEntity.ok(userService.findAll().map { UserResponse.fromEntity(it) })
     }
 
-    @PutMapping("/{id}")
-    fun update(
-        @PathVariable id: Long,
-        @RequestBody request: UserRequest,
-        httpRequest: HttpServletRequest
-    ): ResponseEntity<UserResponse> {
+     @PutMapping("/{id}")
+     fun update(
+         @PathVariable id: Long,
+         @Valid @RequestBody request: UserRequest,
+         httpRequest: HttpServletRequest
+     ): ResponseEntity<UserResponse> {
         val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
 

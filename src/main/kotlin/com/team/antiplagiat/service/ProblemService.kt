@@ -1,5 +1,6 @@
 package com.team.antiplagiat.service
 
+import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.repository.ProblemRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -127,27 +128,35 @@ class ProblemService(
         return updated
     }
 
-    /**
-     * Удаляет задачу по её идентификатору.
-     *
-     * Если задача с указанным [id] не существует — метод завершается без ошибки.
-     *
-     * @param id идентификатор задачи для удаления
-     */
-    fun delete(id: Long) {
-        logger.info { "Начало удаления задачи id=$id" }
-        logger.debug { "Выполняется DELETE операция для задачи id=$id" }
-        
-        return try {
-            problemRepository.deleteById(id)
-            logger.info { "Задача успешно удалена: id=$id" }
-            logger.debug { "Операция DELETE завершена успешно для id=$id" }
-            meterRegistry.counter("problem.deleted.total").increment()
-        } catch (e: Exception) {
-            logger.error { "Ошибка при удалении задачи id=$id: ${e.message}" }
-            logger.debug { "Stack trace: ${e.stackTrace.joinToString("\n")}" }
-            meterRegistry.counter("problem.deleted.failed.total").increment()
-            throw e
-        }
-    }
+     /**
+      * Удаляет задачу по её идентификатору.
+      *
+      * Если задача с указанным [id] не существует — выбрасывает [ResourceNotFoundException].
+      *
+      * @param id идентификатор задачи для удаления
+      * @throws ResourceNotFoundException если задача не найдена
+      */
+     fun delete(id: Long) {
+         logger.info { "Начало удаления задачи id=$id" }
+         logger.debug { "Выполняется DELETE операция для задачи id=$id" }
+
+         if (!problemRepository.existsById(id)) {
+             logger.warn { "Попытка удаления несуществующей задачи: id=$id" }
+             logger.debug { "Task с id=$id не найдена в базе данных" }
+             meterRegistry.counter("problem.deleted.failed.not_found.total").increment()
+             throw ResourceNotFoundException("Problem with id=$id not found")
+         }
+
+         return try {
+             problemRepository.deleteById(id)
+             logger.info { "Задача успешно удалена: id=$id" }
+             logger.debug { "Операция DELETE завершена успешно для id=$id" }
+             meterRegistry.counter("problem.deleted.total").increment()
+         } catch (e: Exception) {
+             logger.error { "Ошибка при удалении задачи id=$id: ${e.message}" }
+             logger.debug { "Stack trace: ${e.stackTrace.joinToString("\n")}" }
+             meterRegistry.counter("problem.deleted.failed.total").increment()
+             throw e
+         }
+     }
 }

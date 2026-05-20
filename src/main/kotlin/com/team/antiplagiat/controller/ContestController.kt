@@ -8,6 +8,7 @@ import com.team.antiplagiat.service.ContestService
 import com.team.antiplagiat.service.UserService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -21,36 +22,34 @@ class ContestController(
     private val userService: UserService
 ) {
 
-    @PostMapping
-    fun create(
-        @RequestBody request: ContestRequest,
-        httpRequest: HttpServletRequest
-    ): ResponseEntity<ContestResponse> {
-        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+     @PostMapping
+     fun create(
+         @Valid @RequestBody request: ContestRequest,
+         httpRequest: HttpServletRequest
+     ): ResponseEntity<ContestResponse> {
+         val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+         if (payload.role != "ADMIN") {
+             return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+         }
 
-        if (payload.role != "ADMIN") {
-            logger.warn { "POST /api/contests - доступ запрещён пользователю ${payload.userId} (роль: ${payload.role})" }
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-        }
+         logger.info { "POST /api/contests - создание контеста от администратора ${payload.userId}" }
+         logger.debug { "Request: $request" }
 
-        logger.info { "POST /api/contests - создание контеста от администратора ${payload.userId}" }
-        logger.debug { "Request: $request" }
+         val admin = userService.findById(payload.userId) ?: run {
+             logger.warn { "Администратор ${payload.userId} не найден" }
+             return ResponseEntity.badRequest().build()
+         }
 
-        val admin = userService.findById(payload.userId) ?: run {
-            logger.warn { "Администратор ${payload.userId} не найден" }
-            return ResponseEntity.badRequest().build()
-        }
+         val contest = request.toEntity(admin)
+         val created = contestService.create(contest) ?: run {
+             logger.warn { "Ошибка создания контеста" }
+             return ResponseEntity.badRequest().build()
+         }
 
-        val contest = request.toEntity(admin)
-        val created = contestService.create(contest) ?: run {
-            logger.warn { "Ошибка создания контеста" }
-            return ResponseEntity.badRequest().build()
-        }
-
-        logger.info { "Контест создан: id=${created.id}" }
-        return ResponseEntity.status(HttpStatus.CREATED).body(ContestResponse.fromEntity(created))
-    }
+         logger.info { "Контест создан: id=${created.id}" }
+         return ResponseEntity.status(HttpStatus.CREATED).body(ContestResponse.fromEntity(created))
+     }
 
     @GetMapping("/{id}")
     fun get(
@@ -91,50 +90,46 @@ class ContestController(
         return ResponseEntity.ok(contests.map { ContestResponse.fromEntity(it) })
     }
 
-    @PutMapping("/{id}")
-    fun update(
-        @PathVariable id: Long,
-        @RequestParam name: String?,
-        @RequestParam duration: Long?,
-        httpRequest: HttpServletRequest
-    ): ResponseEntity<ContestResponse> {
-        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+     @PutMapping("/{id}")
+     fun update(
+         @PathVariable id: Long,
+         @RequestParam name: String?,
+         @RequestParam duration: Long?,
+         httpRequest: HttpServletRequest
+     ): ResponseEntity<ContestResponse> {
+         val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+         if (payload.role != "ADMIN") {
+             return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+         }
 
-        if (payload.role != "ADMIN") {
-            logger.warn { "PUT /api/contests/$id - доступ запрещён пользователю ${payload.userId} (роль: ${payload.role})" }
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-        }
+         logger.info { "PUT /api/contests/$id - обновление от администратора ${payload.userId}: name=$name, duration=$duration" }
+         logger.debug { "Параметры: id=$id, name=$name, duration=$duration" }
 
-        logger.info { "PUT /api/contests/$id - обновление от администратора ${payload.userId}: name=$name, duration=$duration" }
-        logger.debug { "Параметры: id=$id, name=$name, duration=$duration" }
+         val updated = contestService.update(id, name, duration) ?: run {
+             logger.warn { "Контест $id не найден или ошибка обновления" }
+             return ResponseEntity.notFound().build()
+         }
 
-        val updated = contestService.update(id, name, duration) ?: run {
-            logger.warn { "Контест $id не найден или ошибка обновления" }
-            return ResponseEntity.notFound().build()
-        }
+         logger.info { "Контест обновлен: id=${updated.id}" }
+         return ResponseEntity.ok(ContestResponse.fromEntity(updated))
+     }
 
-        logger.info { "Контест обновлен: id=${updated.id}" }
-        return ResponseEntity.ok(ContestResponse.fromEntity(updated))
-    }
+     @DeleteMapping("/{id}")
+     fun delete(
+         @PathVariable id: Long,
+         httpRequest: HttpServletRequest
+     ): ResponseEntity<Void> {
+         val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+         if (payload.role != "ADMIN") {
+             return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+         }
 
-    @DeleteMapping("/{id}")
-    fun delete(
-        @PathVariable id: Long,
-        httpRequest: HttpServletRequest
-    ): ResponseEntity<Void> {
-        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
-
-        if (payload.role != "ADMIN") {
-            logger.warn { "DELETE /api/contests/$id - доступ запрещён пользователю ${payload.userId} (роль: ${payload.role})" }
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-        }
-
-        logger.info { "DELETE /api/contests/$id - удаление от администратора ${payload.userId}" }
-        logger.debug { "Удаление контеста" }
-        contestService.delete(id)
-        logger.info { "Контест удален: id=$id" }
-        return ResponseEntity.noContent().build()
-    }
+         logger.info { "DELETE /api/contests/$id - удаление от администратора ${payload.userId}" }
+         logger.debug { "Удаление контеста" }
+         contestService.delete(id)
+         logger.info { "Контест удален: id=$id" }
+         return ResponseEntity.noContent().build()
+     }
 }

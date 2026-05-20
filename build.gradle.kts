@@ -27,6 +27,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	testImplementation("org.springframework.security:spring-security-test")
 	testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
 	testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.0")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")

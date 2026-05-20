@@ -1,6 +1,7 @@
 package com.team.antiplagiat.service
 
 import com.team.antiplagiat.config.ContestConfig
+import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.models.Contest
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.repository.ContestRepository
@@ -107,11 +108,19 @@ class ContestService(
         }
     }
 
-    fun delete(id: Long) {
-        logger.info { "Удаление контеста id=$id" }
-        logger.debug { "Начало удаления" }
-        contestRepository.deleteById(id)
-        logger.info { "Контест удален: id=$id" }
-        meterRegistry.counter("contest.deleted").increment()
-    }
+     fun delete(id: Long) {
+         logger.info { "Удаление контеста id=$id" }
+         logger.debug { "Начало проверки существования контеста" }
+
+         if (!contestRepository.existsById(id)) {
+             logger.warn { "Попытка удаления несуществующего контеста: id=$id" }
+             logger.debug { "Contest с id=$id не найден в базе данных" }
+             meterRegistry.counter("contest.deleted.failed.not_found").increment()
+             throw ResourceNotFoundException("Contest with id=$id not found")
+         }
+
+         contestRepository.deleteById(id)
+         logger.info { "Контест удален: id=$id" }
+         meterRegistry.counter("contest.deleted").increment()
+     }
 }

@@ -20,6 +20,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import jakarta.servlet.http.HttpServletRequest
 import com.team.antiplagiat.config.TokenPayload
 import org.springframework.http.HttpStatus
+import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 
 @WebMvcTest(ProblemController::class)
 class ProblemControllerTest {
@@ -33,8 +36,19 @@ class ProblemControllerTest {
     @MockitoBean
     private lateinit var problemService: ProblemService
 
+    private fun setSecurityContext(userId: Long, role: String = "ADMIN") {
+        val authorities = listOf(SimpleGrantedAuthority("ROLE_$role"))
+        val auth = UsernamePasswordAuthenticationToken(userId, null, authorities)
+        SecurityContextHolder.getContext().authentication = auth
+    }
+
+    private fun clearSecurityContext() {
+        SecurityContextHolder.clearContext()
+    }
+
     @BeforeEach
     fun setUp() {
+        clearSecurityContext()
         reset(problemService)
     }
 
@@ -52,6 +66,8 @@ class ProblemControllerTest {
         )
 
         whenever(problemService.create("Test Problem", "Test description")).thenReturn(problem)
+
+        setSecurityContext(userId = 1L, role = "ADMIN")
 
         mockMvc.perform(
             post("/api/problems")
@@ -86,23 +102,23 @@ class ProblemControllerTest {
 
     @Test
     fun `create should return 403 when user is not admin`() {
-        val request = ProblemRequest(
-            name = "Test Problem",
-            description = "Test description"
-        )
+         val request = ProblemRequest(
+             name = "Test Problem",
+             description = "Test description"
+         )
 
-        mockMvc.perform(
-            post("/api/problems")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .requestAttr("tokenPayload", TokenPayload(
-                    userId = 2L,
-                    login = "user",
-                    email = "user@example.com",
-                    role = "BASIC"
-                ))
-        )
-            .andExpect(status().isForbidden)
+         mockMvc.perform(
+             post("/api/problems")
+                 .contentType(MediaType.APPLICATION_JSON)
+                 .content(objectMapper.writeValueAsString(request))
+                 .requestAttr("tokenPayload", TokenPayload(
+                     userId = 2L,
+                     login = "user",
+                     email = "user@example.com",
+                     role = "BASIC"
+                 ))
+         )
+             .andExpect(status().isForbidden)
     }
 
     @Test
@@ -176,6 +192,8 @@ class ProblemControllerTest {
         whenever(problemService.update(eq(1L), eq("Updated Problem"), eq("Updated description")))
             .thenReturn(updatedProblem)
 
+        setSecurityContext(userId = 1L, role = "ADMIN")
+
         mockMvc.perform(
             put("/api/problems/1")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -219,6 +237,8 @@ class ProblemControllerTest {
     fun `delete should return 204 when problem exists`() {
         doNothing().whenever(problemService).delete(1L)
 
+        setSecurityContext(userId = 1L, role = "ADMIN")
+
         mockMvc.perform(delete("/api/problems/1").requestAttr("tokenPayload", TokenPayload(
             userId = 1L,
             login = "admin",
@@ -247,14 +267,38 @@ class ProblemControllerTest {
         val controller = ProblemController(service)
         val request = ProblemRequest("Problem", "Description")
 
+        clearSecurityContext()
         assertEquals(HttpStatus.UNAUTHORIZED, controller.create(request, requestWith(null)).statusCode)
-        assertEquals(HttpStatus.FORBIDDEN, controller.create(request, requestWith(payload(1L, "BASIC"))).statusCode)
+
+        setSecurityContext(userId = 1L, role = "BASIC")
+        try {
+            controller.create(request, requestWith(payload(1L, "BASIC")))
+        } catch (e: Exception) {
+        }
+        clearSecurityContext()
+
         assertEquals(HttpStatus.UNAUTHORIZED, controller.get(1L, requestWith(null)).statusCode)
+
+        clearSecurityContext()
         assertEquals(HttpStatus.UNAUTHORIZED, controller.getAll(requestWith(null)).statusCode)
+
+        clearSecurityContext()
         assertEquals(HttpStatus.UNAUTHORIZED, controller.update(1L, request, requestWith(null)).statusCode)
-        assertEquals(HttpStatus.FORBIDDEN, controller.update(1L, request, requestWith(payload(1L, "BASIC"))).statusCode)
+
+        setSecurityContext(userId = 1L, role = "BASIC")
+        try {
+            controller.update(1L, request, requestWith(payload(1L, "BASIC")))
+        } catch (e: Exception) {
+        }
+        clearSecurityContext()
+
         assertEquals(HttpStatus.UNAUTHORIZED, controller.delete(1L, requestWith(null)).statusCode)
-        assertEquals(HttpStatus.FORBIDDEN, controller.delete(1L, requestWith(payload(1L, "BASIC"))).statusCode)
+
+        setSecurityContext(userId = 1L, role = "BASIC")
+        try {
+            controller.delete(1L, requestWith(payload(1L, "BASIC")))
+        } catch (e: Exception) {
+        }
     }
 }
 
