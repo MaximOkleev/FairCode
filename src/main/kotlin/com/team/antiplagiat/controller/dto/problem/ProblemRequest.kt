@@ -10,11 +10,12 @@ data class ProblemRequest(
     val name: String,
 
     @field:Size(max = 5000, message = "Описание слишком длинное")
-    val description: String?
+    val description: String?,
+    val condition: String? = null
 )
-
 fun ProblemRequest.toEntity(): Problem = Problem(
     name = this.name,
-    description = this.description
+    description = this.description,
+    condition = this.condition
 )
 

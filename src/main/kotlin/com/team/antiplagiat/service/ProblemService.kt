@@ -31,14 +31,15 @@ class ProblemService(
      *
      * @param name название задачи (обязательное поле)
      * @param description описание задачи (опциональное, может быть `null`)
+     * @param condition условие задачи (опциональное, может быть `null`)
      * @return созданная задача с присвоенным идентификатором
      */
-    fun create(name: String, description: String?): Problem {
+    fun create(name: String, description: String?, condition: String? = null): Problem {
         logger.info { "Создание задачи: $name" }
-        logger.debug { "Параметры создания: name='$name', description='$description'" }
+        logger.debug { "Параметры создания: name='$name', description='$description', condition='$condition'" }
         
         return try {
-            val newProblem = Problem(name = name, description = description)
+            val newProblem = Problem(name = name, description = description, condition = condition)
             logger.debug { "Объект Problem создан перед сохранением: $newProblem" }
             
             val saved = problemRepository.save(newProblem)
@@ -93,11 +94,12 @@ class ProblemService(
      * @param id идентификатор задачи для обновления
      * @param name новое название задачи, если `null` — название не изменяется
      * @param description новое описание задачи, если `null` — описание не изменяется
+     * @param condition новое условие задачи, если `null` — условие не изменяется
      * @return обновлённая задача, или `null` если задача не найдена
      */
-    fun update(id: Long, name: String?, description: String?): Problem? {
-        logger.info { "Обновление задачи id=$id: name=$name, description=$description" }
-        logger.debug { "Параметры обновления: id=$id, newName=$name, newDescription=$description" }
+    fun update(id: Long, name: String?, description: String?, condition: String? = null): Problem? {
+        logger.info { "Обновление задачи id=$id: name=$name, description=$description, condition=$condition" }
+        logger.debug { "Параметры обновления: id=$id, newName=$name, newDescription=$description, newCondition=$condition" }
         
         val problem = findById(id)
         if (problem == null) {
@@ -109,7 +111,8 @@ class ProblemService(
         
         val oldName = problem.name
         val oldDescription = problem.description
-        
+        val oldCondition = problem.condition
+
         name?.let {
             logger.debug { "Изменение названия: '$oldName' -> '$it'" }
             problem.name = it
@@ -118,6 +121,11 @@ class ProblemService(
         description?.let {
             logger.debug { "Изменение описания: '$oldDescription' -> '$it'" }
             problem.description = it
+        }
+
+        condition?.let {
+            logger.debug { "Изменение условия: '$oldCondition' -> '$it'" }
+            problem.condition = it
         }
         
         val updated = problemRepository.save(problem)

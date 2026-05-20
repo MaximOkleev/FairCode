@@ -1,11 +1,14 @@
 package com.team.antiplagiat.service
 
 import com.team.antiplagiat.config.ResendProperties
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.boot.web.client.RestTemplateBuilder
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
+
+private val resendLogger = KotlinLogging.logger {}
 
 @Service
 class ResendService(
@@ -20,9 +23,11 @@ class ResendService(
         subject: String,
         html: String
     ) {
-        if (!properties.enabled || properties.apiKey.isBlank()) {
+        if (!properties.enabled) {
+            resendLogger.info { "Resend delivery is disabled" }
             return
         }
+        require(properties.apiKey.isNotBlank()) { "RESEND_API_KEY is required when Resend delivery is enabled" }
 
         val headers = HttpHeaders().apply {
             contentType = MediaType.APPLICATION_JSON

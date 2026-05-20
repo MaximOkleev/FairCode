@@ -13,10 +13,6 @@ spring:
       ddl-auto: update
     show-sql: true
     defer-datasource-initialization: true
-  servlet:
-    multipart:
-      max-file-size: 50MB
-      max-request-size: 50MB
 server:
   error:
     include-message: always
@@ -30,14 +26,23 @@ logging:
   config: classpath:monitoring/logback-spring.xml
 app:
   solution:
-    max-attempts: 100
-  zip-import:
-    max-files: 1000
-    max-entry-size: 5MB
+    max-attempts: 50
+  ai-generation:
+    temperature: ${AI_GENERATION_TEMPERATURE:0.2}
+    max-tokens: ${AI_GENERATION_MAX_TOKENS:4096}
+    openrouter:
+      api-key: ${OPENROUTER_API_KEY:}
+      base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+      http-referer: ${OPENROUTER_HTTP_REFERER:}
+      app-title: ${OPENROUTER_APP_TITLE:antiplagiat}
+    models:
+      chatgpt: ${OPENROUTER_CHATGPT_MODEL:openai/gpt-5.1}
+      gemini: ${OPENROUTER_GEMINI_MODEL:google/gemini-3.1-flash-lite}
+      deepseek: ${OPENROUTER_DEEPSEEK_MODEL:deepseek/deepseek-v4-flash}
   contest:
-    max-duration-hours: 8
+    max-duration-hours: 5
   resend:
-    enabled: ${RESEND_ENABLED:false}
+    enabled: ${APP_RESEND_ENABLED:false}
     api-key: ${RESEND_API_KEY:}
     from: ${RESEND_FROM_EMAIL:onboarding@resend.dev}
     base-url: ${APP_BASE_URL:http://localhost:8080/api}

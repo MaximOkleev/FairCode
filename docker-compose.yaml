@@ -69,6 +69,12 @@ services: #раздел с описанием сервисов (контейне
       APP_SECURITY_ENABLED: "true"
       APP_SECURITY_USER_PROVIDER: database
 
+      # Resend email delivery
+      APP_RESEND_ENABLED: "true"
+      RESEND_API_KEY: ""
+      RESEND_FROM_EMAIL: "onboarding@resend.dev"
+      APP_BASE_URL: "http://localhost:8080/api"
+
       # APP_SECURITY_MEMORY_USERNAME: admin            # in-memory user (не используется)
       # APP_SECURITY_MEMORY_PASSWORD: admin            # in-memory password (не используется)
 

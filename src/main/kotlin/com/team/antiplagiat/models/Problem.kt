@@ -11,5 +11,8 @@ class Problem(
     @Column(nullable = false, unique = true)
     var name: String = "",
 
-    var description: String? = null
+    var description: String? = null,
+
+    @Column(columnDefinition = "TEXT")
+    var condition: String? = null
 )

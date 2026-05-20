@@ -1,8 +1,8 @@
 package com.team.antiplagiat.service
 
-import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.repository.ProblemRepository
+import com.team.antiplagiat.exception.ResourceNotFoundException
 import io.micrometer.core.instrument.MeterRegistry
 import io.mockk.every
 import io.mockk.just
@@ -11,12 +11,11 @@ import io.mockk.Runs
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -42,17 +41,19 @@ class ProblemServiceTest {
         problem = Problem(
             id = 1L,
             name = "Sum of numbers",
-            description = "Find the sum of two numbers"
+            description = "Find the sum of two numbers",
+            condition = "Read two integers and print their sum"
         )
     }
 
     @Test
     fun `problem fields are set correctly on creation`() {
-        val problem = Problem(id = 1L, name = "Test", description = "Description")
+        val problem = Problem(id = 1L, name = "Test", description = "Description", condition = "Condition")
 
         assertEquals(1L, problem.id)
         assertEquals("Test", problem.name)
         assertEquals("Description", problem.description)
+        assertEquals("Condition", problem.condition)
     }
 
     @Test
@@ -60,6 +61,7 @@ class ProblemServiceTest {
         val problem = Problem(id = 0L, name = "")
 
         assertNull(problem.description)
+        assertNull(problem.condition)
         assertEquals(0L, problem.id)
     }
 
@@ -67,14 +69,15 @@ class ProblemServiceTest {
     fun `create saves and returns problem with description`() {
         every { problemRepository.save(any()) } returns problem
 
-        val result = problemService.create("Sum of numbers", "Find the sum of two numbers")
+        val result = problemService.create("Sum of numbers", "Find the sum of two numbers", "Read two integers")
 
         assertEquals("Sum of numbers", result.name)
         assertEquals("Find the sum of two numbers", result.description)
         verify(exactly = 1) {
             problemRepository.save(match {
                 it.name == "Sum of numbers" &&
-                    it.description == "Find the sum of two numbers"
+                    it.description == "Find the sum of two numbers" &&
+                    it.condition == "Read two integers"
             })
         }
     }
@@ -84,7 +87,7 @@ class ProblemServiceTest {
         val problemWithoutDescription = Problem(id = 2L, name = "Factorial", description = null)
         every { problemRepository.save(any()) } returns problemWithoutDescription
 
-        val result = problemService.create("Factorial", null)
+        val result = problemService.create("Factorial", null, null)
 
         assertEquals("Factorial", result.name)
         assertNull(result.description)
@@ -142,15 +145,16 @@ class ProblemServiceTest {
 
     @Test
     fun `update changes existing problem and returns saved value`() {
-        val updated = Problem(id = 1L, name = "New title", description = "New description")
+        val updated = Problem(id = 1L, name = "New title", description = "New description", condition = "New condition")
         every { problemRepository.findById(1L) } returns Optional.of(problem)
         every { problemRepository.save(any()) } returns updated
 
-        val result = problemService.update(1L, "New title", "New description")
+        val result = problemService.update(1L, "New title", "New description", "New condition")
 
         assertNotNull(result)
         assertEquals("New title", result?.name)
         assertEquals("New description", result?.description)
+        assertEquals("New condition", result?.condition)
     }
 
     @Test
@@ -158,7 +162,7 @@ class ProblemServiceTest {
         every { problemRepository.findById(1L) } returns Optional.of(problem)
         every { problemRepository.save(any()) } answers { firstArg() }
 
-        val result = problemService.update(1L, "New title", null)
+        val result = problemService.update(1L, "New title", null, null)
 
         assertNotNull(result)
         assertEquals("New title", result?.name)
@@ -169,7 +173,7 @@ class ProblemServiceTest {
     fun `update returns null and does not save for missing problem`() {
         every { problemRepository.findById(99L) } returns Optional.empty()
 
-        val result = problemService.update(99L, "Title", "Description")
+        val result = problemService.update(99L, "Title", "Description", "Condition")
 
         assertNull(result)
         verify(exactly = 0) { problemRepository.save(any()) }
@@ -180,7 +184,7 @@ class ProblemServiceTest {
         every { problemRepository.findById(1L) } returns Optional.of(problem)
         every { problemRepository.save(any()) } answers { firstArg() }
 
-        val result = problemService.update(1L, null, "New description")
+        val result = problemService.update(1L, null, "New description", null)
 
         assertNotNull(result)
         assertEquals("Sum of numbers", result?.name)
@@ -192,28 +196,28 @@ class ProblemServiceTest {
         every { problemRepository.findById(1L) } returns Optional.of(problem)
         every { problemRepository.save(any()) } answers { firstArg() }
 
-        val result = problemService.update(1L, null, null)
+        val result = problemService.update(1L, null, null, null)
 
         assertNotNull(result)
         assertEquals("Sum of numbers", result?.name)
         assertEquals("Find the sum of two numbers", result?.description)
     }
 
-     @Test
-     fun `delete throws ResourceNotFoundException for missing id`() {
-         every { problemRepository.existsById(99L) } returns false
+    @Test
+    fun `delete calls repository for existing id`() {
+        every { problemRepository.existsById(1L) } returns true
+        every { problemRepository.deleteById(1L) } just Runs
 
-         assertThrows(ResourceNotFoundException::class.java) { problemService.delete(99L) }
-         verify(exactly = 0) { problemRepository.deleteById(any()) }
-     }
+        problemService.delete(1L)
 
-      @Test
-      fun `delete calls repository for existing id`() {
-          every { problemRepository.existsById(1L) } returns true
-          every { problemRepository.deleteById(1L) } just Runs
+        verify(exactly = 1) { problemRepository.deleteById(1L) }
+    }
 
-          problemService.delete(1L)
+    @Test
+    fun `delete throws for missing id`() {
+        every { problemRepository.existsById(99L) } returns false
 
-          verify(exactly = 1) { problemRepository.deleteById(1L) }
-      }
+        assertThrows(ResourceNotFoundException::class.java) { problemService.delete(99L) }
+        verify(exactly = 0) { problemRepository.deleteById(99L) }
+    }
 }
