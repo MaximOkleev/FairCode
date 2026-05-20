@@ -1,4 +1,4 @@
-# Monitoring
+# Мониторинг
 
 В этой папке лежат файлы для запуска мониторинга приложения:
 
@@ -34,17 +34,17 @@ docker compose up -d
 
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
-- Grafana login/password: `admin / admin`
+- Логин/пароль Grafana: `admin / admin`
 - Метрики приложения: `http://localhost:8080/actuator/prometheus`
 
 ## Настройка Grafana
 
-### Шаг 1: Добавить Data Source Prometheus
+### Шаг 1: Добавить источник данных Prometheus
 
 1. Открыть `http://localhost:3000`
 2. Войти под `admin/admin`
-3. Перейти в **Configuration → Data Sources**
-4. Нажать **Add data source**
+3. Перейти в **Конфигурация → Источники данных**
+4. Нажать **Добавить источник данных**
 5. Выбрать **Prometheus**
 6. В URL указать:
 
@@ -54,29 +54,31 @@ http://prometheus:9090
 
 7. Сохранить
 
-### Шаг 2: Импортировать Business Metrics Dashboard
+### Шаг 2: Импортировать дашборд бизнес-метрик
 
-1. Перейти в **Dashboards → Import**
-2. Нажать **Upload JSON file**
+1. Перейти в **Панели → Импорт**
+2. Нажать **Загрузить JSON-файл**
 3. Выбрать файл `grafana-dashboard.json` из этой папки
-4. Нажать **Load** и затем **Import**
+4. Нажать **Загрузить** и затем **Импортировать**
 
-### Шаг 3: Импортировать API RED Dashboard
+### Шаг 3: Импортировать RED-дашборд API
 
-1. Перейти в **Dashboards → Import**
-2. Нажать **Upload JSON file**
+1. Перейти в **Панели → Импорт**
+2. Нажать **Загрузить JSON-файл**
 3. Выбрать файл `grafana-red-dashboard.json` из этой папки
-4. Нажать **Load** и затем **Import**
+4. Нажать **Загрузить** и затем **Импортировать**
 
-Альтернативно, можно создать Dashboard вручную и добавить графики по метрикам:
+Альтернативно можно создать дашборд вручную и добавить графики по метрикам:
 
 ### Доступные метрики приложения:
 
-**Метрики Проблем/Задач:**
-- `problem_created_total` — количество созданных задач
-- `problem_updated_total` — количество обновленных задач
-- `problem_deleted_total` — количество удаленных задач
-- `problem_created.failed.total` — количество ошибок при создании
+**Метрики проблем/задач:**
+- `problem.created.total` — количество созданных задач
+- `problem.created.failed.total` — количество ошибок при создании
+- `problem.updated.total` — количество обновлений задач
+- `problem.update.failed.not_found.total` — попытки обновить несуществующую задачу
+- `problem.deleted.total` — количество удалённых задач
+- `problem.deleted.failed.total` — количество ошибок при удалении
 
 **Метрики Контестов:**
 - `contest_created` — количество созданных контестов
@@ -122,18 +124,18 @@ http://prometheus:9090
 
 Пример построения дашборда вручную:
 
-1. **Всего задач в системе** → метрика: `problem_created_total`
-2. **Всего контестов** → метрика: `contest_created`
+1. **Создано задач** → метрика: `problem.created.total`
+2. **Создано контестов** → метрика: `contest.created`
 3. **Всего пользователей** → метрика: `registration.success`
-4. **История создания задач за последний час** → метрика: `increase(problem_created_total[1h])`
-5. **История создания контестов за последний час** → метрика: `increase(contest_created[1h])`
-6. **Активные задачи** → метрика: `problem_created_total - problem_deleted_total`
-7. **Ошибки при создании задач** → метрика: `increase(problem_created.failed.total[1h])`
+4. **История создания задач за последний час** → метрика: `increase(problem.created.total[1h])`
+5. **История создания контестов за последний час** → метрика: `increase(contest.created[1h])`
+6. **Активные задачи** → метрика: `problem.created.total - problem.deleted.total`
+7. **Ошибки при создании задач** → метрика: `increase(problem.created.failed.total[1h])`
 8. **Статистика регистрации** → метрики: `increase(registration.success[1h])` и `increase(registration.failure[1h])`
 
 ## RED-метрики API
 
-### Что показывает RED Dashboard
+### Что показывает RED-дашборд
 
 1. **Rate** — количество запросов в секунду (`RPS`)
 2. **Errors** — количество `4xx` и `5xx` ошибок, а также их доля в процентах
