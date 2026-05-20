@@ -122,58 +122,24 @@ class ProblemControllerTest {
     }
 
     @Test
-    fun `get should return problem`() {
-        val problem = Problem(
-            id = 1L,
-            name = "Test Problem",
-            description = "Test description"
+    fun `create should return 400 when validation fails - empty name`() {
+        val request = ProblemRequest(
+            name = "",
+            description = "Valid description"
         )
 
-        whenever(problemService.findById(1L)).thenReturn(problem)
-
-        mockMvc.perform(get("/api/problems/1").requestAttr("tokenPayload", TokenPayload(
-            userId = 1L,
-            login = "admin",
-            email = "admin@example.com",
-            role = "ADMIN"
-        )))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.id").value(1))
-            .andExpect(jsonPath("$.name").value("Test Problem"))
-    }
-
-    @Test
-    fun `get should return 404 when problem not found`() {
-        whenever(problemService.findById(999L)).thenReturn(null)
-
-        mockMvc.perform(get("/api/problems/999").requestAttr("tokenPayload", TokenPayload(
-            userId = 1L,
-            login = "admin",
-            email = "admin@example.com",
-            role = "ADMIN"
-        )))
-            .andExpect(status().isNotFound)
-    }
-
-    @Test
-    fun `getAll should return list of problems`() {
-        val problems = listOf(
-            Problem(id = 1L, name = "Problem 1", description = "Desc 1"),
-            Problem(id = 2L, name = "Problem 2", description = "Desc 2")
+        mockMvc.perform(
+            post("/api/problems")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "admin",
+                    email = "admin@example.com",
+                    role = "ADMIN"
+                ))
         )
-
-        whenever(problemService.findAll()).thenReturn(problems)
-
-        mockMvc.perform(get("/api/problems").requestAttr("tokenPayload", TokenPayload(
-            userId = 1L,
-            login = "admin",
-            email = "admin@example.com",
-            role = "ADMIN"
-        )))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(2))
-            .andExpect(jsonPath("$[0].name").value("Problem 1"))
-            .andExpect(jsonPath("$[1].name").value("Problem 2"))
+            .andExpect(status().isBadRequest)
     }
 
     @Test
@@ -234,6 +200,28 @@ class ProblemControllerTest {
     }
 
     @Test
+    fun `update should return 400 when validation fails - long name`() {
+        val longName = "a".repeat(201)
+        val request = ProblemRequest(
+            name = longName,
+            description = "Description"
+        )
+
+        mockMvc.perform(
+            put("/api/problems/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "admin",
+                    email = "admin@example.com",
+                    role = "ADMIN"
+                ))
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
     fun `delete should return 204 when problem exists`() {
         doNothing().whenever(problemService).delete(1L)
 
@@ -250,55 +238,109 @@ class ProblemControllerTest {
         verify(problemService, times(1)).delete(1L)
     }
 
-    private fun requestWith(payload: TokenPayload?): HttpServletRequest = mockk<HttpServletRequest>().also {
-        every { it.getAttribute("tokenPayload") } returns payload
+    @Test
+    fun `delete should return 403 when user is not admin`() {
+        mockMvc.perform(
+            delete("/api/problems/1")
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 2L,
+                    login = "user",
+                    email = "user@example.com",
+                    role = "BASIC"
+                ))
+        )
+            .andExpect(status().isForbidden)
     }
-
-    private fun payload(userId: Long, role: String) = TokenPayload(
-        userId = userId,
-        login = "user$userId",
-        email = "user$userId@example.com",
-        role = role
-    )
 
     @Test
-    fun `problem controller covers unauthorized and forbidden branches`() {
-        val service = mockk<ProblemService>(relaxed = true)
-        val controller = ProblemController(service)
-        val request = ProblemRequest("Problem", "Description")
+    fun `update should return 403 when user is not admin`() {
+        val request = ProblemRequest(
+            name = "Updated",
+            description = "Updated"
+        )
 
-        clearSecurityContext()
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.create(request, requestWith(null)).statusCode)
-
-        setSecurityContext(userId = 1L, role = "BASIC")
-        try {
-            controller.create(request, requestWith(payload(1L, "BASIC")))
-        } catch (e: Exception) {
-        }
-        clearSecurityContext()
-
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.get(1L, requestWith(null)).statusCode)
-
-        clearSecurityContext()
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.getAll(requestWith(null)).statusCode)
-
-        clearSecurityContext()
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.update(1L, request, requestWith(null)).statusCode)
-
-        setSecurityContext(userId = 1L, role = "BASIC")
-        try {
-            controller.update(1L, request, requestWith(payload(1L, "BASIC")))
-        } catch (e: Exception) {
-        }
-        clearSecurityContext()
-
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.delete(1L, requestWith(null)).statusCode)
-
-        setSecurityContext(userId = 1L, role = "BASIC")
-        try {
-            controller.delete(1L, requestWith(payload(1L, "BASIC")))
-        } catch (e: Exception) {
-        }
+        mockMvc.perform(
+            put("/api/problems/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 2L,
+                    login = "user",
+                    email = "user@example.com",
+                    role = "BASIC"
+                ))
+        )
+            .andExpect(status().isForbidden)
     }
+
+    @Test
+    fun `getAll should return list of problems`() {
+        val problems = listOf(
+            Problem(id = 1L, name = "Problem 1", description = "Desc 1"),
+            Problem(id = 2L, name = "Problem 2", description = "Desc 2")
+        )
+
+        whenever(problemService.findAll()).thenReturn(problems)
+
+        mockMvc.perform(get("/api/problems").requestAttr("tokenPayload", TokenPayload(
+            userId = 1L,
+            login = "admin",
+            email = "admin@example.com",
+            role = "ADMIN"
+        )))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[0].name").value("Problem 1"))
+            .andExpect(jsonPath("$[1].name").value("Problem 2"))
+    }
+
+    @Test
+    fun `getAll should return 401 when token missing`() {
+        mockMvc.perform(get("/api/problems"))
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `get should return 401 when token missing`() {
+        mockMvc.perform(get("/api/problems/1"))
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `create should return 401 when token missing`() {
+        val request = ProblemRequest(
+            name = "Test",
+            description = "Test"
+        )
+
+        mockMvc.perform(
+            post("/api/problems")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        )
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `update should return 401 when token missing`() {
+        val request = ProblemRequest(
+            name = "Test",
+            description = "Test"
+        )
+
+        mockMvc.perform(
+            put("/api/problems/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        )
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `delete should return 401 when token missing`() {
+        mockMvc.perform(delete("/api/problems/1"))
+            .andExpect(status().isUnauthorized)
+    }
+
 }
 

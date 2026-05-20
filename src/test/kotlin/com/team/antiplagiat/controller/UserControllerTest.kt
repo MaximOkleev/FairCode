@@ -173,6 +173,18 @@ class UserControllerTest {
     }
 
     @Test
+    fun `update should return 401 when token missing`() {
+        val request = UserRequest("newlogin", "new@example.com")
+
+        mockMvc.perform(
+            put("/api/users/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        )
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
     fun `delete should return 204 when user exists`() {
         doNothing().whenever(userService).delete(1L)
 
@@ -185,6 +197,103 @@ class UserControllerTest {
             .andExpect(status().isNoContent)
 
         verify(userService, times(1)).delete(1L)
+    }
+
+    @Test
+    fun `delete should return 401 when token missing`() {
+        mockMvc.perform(delete("/api/users/1"))
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `update should return 400 when validation fails - invalid email`() {
+        val request = UserRequest("newlogin", "invalid-email")
+
+        mockMvc.perform(
+            put("/api/users/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "user",
+                    email = "user@example.com",
+                    role = "BASIC"
+                ))
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `update should return 400 when validation fails - short login`() {
+        val request = UserRequest("ab", "new@example.com")
+
+        mockMvc.perform(
+            put("/api/users/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "user",
+                    email = "user@example.com",
+                    role = "BASIC"
+                ))
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `delete should return 403 when user tries to delete another user`() {
+        mockMvc.perform(
+            delete("/api/users/2")
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "user1",
+                    email = "user1@example.com",
+                    role = "BASIC"
+                ))
+        )
+            .andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `update should return 403 when user tries to update another user`() {
+        val request = UserRequest("newlogin", "new@example.com")
+
+        mockMvc.perform(
+            put("/api/users/2")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "user1",
+                    email = "user1@example.com",
+                    role = "BASIC"
+                ))
+        )
+            .andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `get should return 403 when user tries to get another user and is not admin`() {
+        val user = User(
+            id = 2L,
+            login = "otheruser",
+            email = "other@example.com",
+            role = User.Role.BASIC
+        )
+
+        whenever(userService.findById(2L)).thenReturn(user)
+
+        mockMvc.perform(
+            get("/api/users/2")
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 1L,
+                    login = "user1",
+                    email = "user1@example.com",
+                    role = "BASIC"
+                ))
+        )
+            .andExpect(status().isForbidden)
     }
 
     private fun requestWith(payload: TokenPayload?): HttpServletRequest = mockk<HttpServletRequest>().also {

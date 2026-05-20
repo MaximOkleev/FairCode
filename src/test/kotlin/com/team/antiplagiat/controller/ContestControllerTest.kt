@@ -360,30 +360,99 @@ class ContestControllerTest {
         verify(contestService, times(1)).delete(1L)
     }
 
-    private fun requestWith(payload: TokenPayload?): HttpServletRequest = mockk<HttpServletRequest>().also {
-        every { it.getAttribute("tokenPayload") } returns payload
-    }
-
-    private fun payload(userId: Long, role: String) = TokenPayload(
-        userId = userId,
-        login = "user$userId",
-        email = "user$userId@example.com",
-        role = role
-    )
-
     @Test
-    fun `contest controller covers unauthorized branches`() {
-        val contestService = mockk<ContestService>(relaxed = true)
-        val userService = mockk<UserService>(relaxed = true)
-        val controller = ContestController(contestService, userService)
+    fun `create should return 403 when user is not admin`() {
         val request = ContestRequest("Contest", LocalDateTime.now(), 60)
 
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.create(request, requestWith(null)).statusCode)
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.get(1L, requestWith(null)).statusCode)
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.getAll(requestWith(null)).statusCode)
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.getByAdmin(requestWith(null)).statusCode)
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.update(1L, "Updated", 120L, requestWith(null)).statusCode)
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.delete(1L, requestWith(null)).statusCode)
+
+        mockMvc.perform(
+            post("/api/contests")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 2L,
+                    login = "user",
+                    email = "user@example.com",
+                    role = "BASIC"
+                ))
+        )
+            .andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `update should return 403 when user is not admin`() {
+        mockMvc.perform(
+            put("/api/contests/1")
+                .param("name", "Updated")
+                .param("duration", "120")
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 2L,
+                    login = "user",
+                    email = "user@example.com",
+                    role = "BASIC"
+                ))
+        )
+            .andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `delete should return 403 when user is not admin`() {
+        mockMvc.perform(
+            delete("/api/contests/1")
+                .requestAttr("tokenPayload", TokenPayload(
+                    userId = 2L,
+                    login = "user",
+                    email = "user@example.com",
+                    role = "BASIC"
+                ))
+        )
+            .andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `create should return 401 when token missing`() {
+        val request = ContestRequest("Contest", LocalDateTime.now(), 60)
+
+        mockMvc.perform(
+            post("/api/contests")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        )
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `getById should return 401 when token missing`() {
+        mockMvc.perform(get("/api/contests/1"))
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `getAll should return 401 when token missing`() {
+        mockMvc.perform(get("/api/contests"))
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `getByAdmin should return 401 when token missing`() {
+        mockMvc.perform(get("/api/contests/by-admin"))
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `update should return 401 when token missing`() {
+        mockMvc.perform(
+            put("/api/contests/1")
+                .param("name", "Updated")
+                .param("duration", "120")
+        )
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `delete should return 401 when token missing`() {
+        mockMvc.perform(delete("/api/contests/1"))
+            .andExpect(status().isUnauthorized)
     }
 }
 
