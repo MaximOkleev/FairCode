@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param
 interface SolutionRepository : JpaRepository<Solution, Long> {
     fun findAllByUserId(userId: Long): List<Solution>
     fun countByUserAndProblem(user: User, problem: Problem): Long
+    fun existsByUserAndProblemAndFilePath(user: User, problem: Problem, filePath: String): Boolean
 
     @Query(
         """

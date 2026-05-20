@@ -4,7 +4,10 @@ import jakarta.persistence.*
 import java.time.LocalDateTime
 
 @Entity
-@Table(name = "solutions")
+@Table(
+    name = "solutions",
+    uniqueConstraints = [UniqueConstraint(columnNames = ["user_id", "problem_id", "file_path"])]
+)
 class Solution(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long = 0,

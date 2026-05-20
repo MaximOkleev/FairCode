@@ -94,55 +94,59 @@ class UserServiceTest {
         verify(exactly = 1) { userRepository.findAll() }
     }
 
-    @Test
-    fun `update returns updated user when found`() {
-        val userId = 1L
-        val existingUser = User(id = userId, login = "old", email = "old@example.com", role = User.Role.BASIC)
-        val updatedUser = User(id = userId, login = "updated", email = "updated@example.com", role = User.Role.BASIC)
+     @Test
+     fun `update returns updated user when found`() {
+         val userId = 1L
+         val existingUser = User(id = userId, login = "old", email = "old@example.com", role = User.Role.BASIC)
+         val updatedUser = User(id = userId, login = "updated", email = "updated@example.com", role = User.Role.BASIC)
 
-        every { userRepository.findById(userId) } returns Optional.of(existingUser)
-        every { userRepository.save(existingUser) } returns updatedUser
+         every { userRepository.findById(userId) } returns Optional.of(existingUser)
+         every { userRepository.findByEmail("updated@example.com") } returns null
+         every { userRepository.findByLogin("updated") } returns null
+         every { userRepository.save(existingUser) } returns updatedUser
 
-        val result = userService.update(userId, "updated", "updated@example.com")
+         val result = userService.update(userId, "updated", "updated@example.com")
 
-        assertNotNull(result)
-        assertEquals("updated", result?.login)
-        assertEquals("updated@example.com", result?.email)
-        verify(exactly = 1) { userRepository.findById(userId) }
-        verify(exactly = 1) { userRepository.save(existingUser) }
-    }
+         assertNotNull(result)
+         assertEquals("updated", result?.login)
+         assertEquals("updated@example.com", result?.email)
+         verify(exactly = 1) { userRepository.findById(userId) }
+         verify(exactly = 1) { userRepository.save(existingUser) }
+     }
 
-    @Test
-    fun `update with only login change`() {
-        val userId = 1L
-        val existingUser = User(id = userId, login = "old", email = "test@example.com", role = User.Role.BASIC)
-        val updatedUser = User(id = userId, login = "newlogin", email = "test@example.com", role = User.Role.BASIC)
+     @Test
+     fun `update with only login change`() {
+         val userId = 1L
+         val existingUser = User(id = userId, login = "old", email = "test@example.com", role = User.Role.BASIC)
+         val updatedUser = User(id = userId, login = "newlogin", email = "test@example.com", role = User.Role.BASIC)
 
-        every { userRepository.findById(userId) } returns Optional.of(existingUser)
-        every { userRepository.save(existingUser) } returns updatedUser
+         every { userRepository.findById(userId) } returns Optional.of(existingUser)
+         every { userRepository.findByLogin("newlogin") } returns null
+         every { userRepository.save(existingUser) } returns updatedUser
 
-        val result = userService.update(userId, "newlogin", null)
+         val result = userService.update(userId, "newlogin", null)
 
-        assertNotNull(result)
-        assertEquals("newlogin", result?.login)
-        assertEquals("test@example.com", result?.email)
-    }
+         assertNotNull(result)
+         assertEquals("newlogin", result?.login)
+         assertEquals("test@example.com", result?.email)
+     }
 
-    @Test
-    fun `update with only email change`() {
-        val userId = 1L
-        val existingUser = User(id = userId, login = "user", email = "old@example.com", role = User.Role.BASIC)
-        val updatedUser = User(id = userId, login = "user", email = "new@example.com", role = User.Role.BASIC)
+     @Test
+     fun `update with only email change`() {
+         val userId = 1L
+         val existingUser = User(id = userId, login = "user", email = "old@example.com", role = User.Role.BASIC)
+         val updatedUser = User(id = userId, login = "user", email = "new@example.com", role = User.Role.BASIC)
 
-        every { userRepository.findById(userId) } returns Optional.of(existingUser)
-        every { userRepository.save(existingUser) } returns updatedUser
+         every { userRepository.findById(userId) } returns Optional.of(existingUser)
+         every { userRepository.findByEmail("new@example.com") } returns null
+         every { userRepository.save(existingUser) } returns updatedUser
 
-        val result = userService.update(userId, null, "new@example.com")
+         val result = userService.update(userId, null, "new@example.com")
 
-        assertNotNull(result)
-        assertEquals("user", result?.login)
-        assertEquals("new@example.com", result?.email)
-    }
+         assertNotNull(result)
+         assertEquals("user", result?.login)
+         assertEquals("new@example.com", result?.email)
+     }
 
     @Test
     fun `update returns null when user not found`() {
@@ -182,5 +186,71 @@ class UserServiceTest {
         assertNotNull(result)
         assertEquals("user", result?.login)
         assertEquals("test@example.com", result?.email)
+    }
+
+    @Test
+    fun `update throws when email already registered to another user`() {
+        val userId = 1L
+        val existingUser = User(id = userId, login = "user1", email = "user1@example.com", role = User.Role.BASIC)
+        val otherUser = User(id = 2L, login = "user2", email = "existing@example.com", role = User.Role.BASIC)
+
+        every { userRepository.findById(userId) } returns Optional.of(existingUser)
+        every { userRepository.findByEmail("existing@example.com") } returns otherUser
+
+        assertThrows(IllegalArgumentException::class.java) {
+            userService.update(userId, null, "existing@example.com")
+        }
+
+        verify(exactly = 0) { userRepository.save(any()) }
+    }
+
+    @Test
+    fun `update throws when login already registered to another user`() {
+        val userId = 1L
+        val existingUser = User(id = userId, login = "user1", email = "user1@example.com", role = User.Role.BASIC)
+        val otherUser = User(id = 2L, login = "existing_login", email = "user2@example.com", role = User.Role.BASIC)
+
+        every { userRepository.findById(userId) } returns Optional.of(existingUser)
+        every { userRepository.findByLogin("existing_login") } returns otherUser
+
+        assertThrows(IllegalArgumentException::class.java) {
+            userService.update(userId, "existing_login", null)
+        }
+
+        verify(exactly = 0) { userRepository.save(any()) }
+    }
+
+    @Test
+    fun `update allows same email for same user`() {
+        val userId = 1L
+        val existingUser = User(id = userId, login = "user", email = "test@example.com", role = User.Role.BASIC)
+        val sameUser = User(id = userId, login = "user", email = "test@example.com", role = User.Role.BASIC)
+
+        every { userRepository.findById(userId) } returns Optional.of(existingUser)
+        every { userRepository.findByEmail("test@example.com") } returns existingUser
+        every { userRepository.save(existingUser) } returns sameUser
+
+        val result = userService.update(userId, null, "test@example.com")
+
+        assertNotNull(result)
+        assertEquals("test@example.com", result?.email)
+        verify(exactly = 1) { userRepository.save(existingUser) }
+    }
+
+    @Test
+    fun `update allows same login for same user`() {
+        val userId = 1L
+        val existingUser = User(id = userId, login = "user", email = "test@example.com", role = User.Role.BASIC)
+        val sameUser = User(id = userId, login = "user", email = "test@example.com", role = User.Role.BASIC)
+
+        every { userRepository.findById(userId) } returns Optional.of(existingUser)
+        every { userRepository.findByLogin("user") } returns existingUser
+        every { userRepository.save(existingUser) } returns sameUser
+
+        val result = userService.update(userId, "user", null)
+
+        assertNotNull(result)
+        assertEquals("user", result?.login)
+        verify(exactly = 1) { userRepository.save(existingUser) }
     }
 }

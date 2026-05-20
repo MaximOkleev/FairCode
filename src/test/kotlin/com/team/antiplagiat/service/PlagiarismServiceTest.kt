@@ -62,13 +62,36 @@ class PlagiarismServiceTest {
         every {
             plagiarismCheckRunRepository.findFirstByStatusOrderByFinishedAtDesc(PlagiarismCheckRunStatus.COMPLETED)
         } returns run
-        every { plagiarismMatchRepository.findAllByCheckRun(run) } returns matches
+        every { plagiarismMatchRepository.findAllByCheckRunWithSolutions(run) } returns matches
 
         val groups = plagiarismService.findCheaterGroups()
 
         assertEquals(1, groups.size)
         assertEquals(listOf(10L, 11L), groups.single().users.map { it.userId })
         assertEquals(listOf(1L, 2L), groups.single().members.map { it.solutionId })
+        verify(exactly = 1) { plagiarismMatchRepository.findAllByCheckRunWithSolutions(run) }
+    }
+
+    @Test
+    fun `findLatestResults should use fetch join repository method`() {
+        val run = PlagiarismCheckRun(id = 8L, threshold = 0.8, status = PlagiarismCheckRunStatus.COMPLETED)
+        val firstSolution = solution(3L, 20L, 200L, "Kotlin", "code3")
+        val secondSolution = solution(4L, 21L, 200L, "Java", "code4")
+        val matches = listOf(match(run, 2L, firstSolution, secondSolution, 0.88))
+
+        every {
+            plagiarismCheckRunRepository.findFirstByStatusOrderByFinishedAtDesc(PlagiarismCheckRunStatus.COMPLETED)
+        } returns run
+        every { plagiarismMatchRepository.findAllByCheckRunWithSolutions(run) } returns matches
+
+        val results = plagiarismService.findLatestResults()
+
+        assertEquals(1, results.size)
+        assertEquals("Problem 200", results.single().problem)
+        assertEquals("user20", results.single().user1)
+        assertEquals("user21", results.single().user2)
+        assertEquals(88.0, results.single().similarity)
+        verify(exactly = 1) { plagiarismMatchRepository.findAllByCheckRunWithSolutions(run) }
     }
 
     @Test

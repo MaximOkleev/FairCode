@@ -2,6 +2,7 @@ package com.team.antiplagiat.controller
 
 import com.team.antiplagiat.controller.dto.register.RegisterRequest
 import com.team.antiplagiat.controller.dto.register.RegisterResponse
+import com.team.antiplagiat.exception.RateLimitException
 import com.team.antiplagiat.service.RegisterService
 import io.mockk.every
 import io.mockk.mockk
@@ -45,15 +46,15 @@ class RegisterControllerTest {
         }
     }
 
-    @Test
-    fun `register returns too many requests on rate limit`() {
-        val registerService = mockk<RegisterService>()
-        every { registerService.register(any()) } throws IllegalStateException("Too many requests. Try again later")
+     @Test
+     fun `register returns too many requests on rate limit`() {
+         val registerService = mockk<RegisterService>()
+         every { registerService.register(any()) } throws RateLimitException("Too many requests. Try again later")
 
-        val controller = RegisterController(registerService)
-        val request = RegisterRequest(email = "test@example.com", password = "password123")
-        org.junit.jupiter.api.assertThrows<IllegalStateException> {
-            controller.register(request)
-        }
-    }
+         val controller = RegisterController(registerService)
+         val request = RegisterRequest(email = "test@example.com", password = "password123")
+         org.junit.jupiter.api.assertThrows<RateLimitException> {
+             controller.register(request)
+         }
+     }
 }

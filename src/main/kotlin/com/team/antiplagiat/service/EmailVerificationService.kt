@@ -2,6 +2,9 @@ package com.team.antiplagiat.service
 
 import com.team.antiplagiat.config.ResendProperties
 import com.team.antiplagiat.config.TokenService
+import com.team.antiplagiat.exception.RateLimitException
+import com.team.antiplagiat.exception.TokenAlreadyUsedException
+import com.team.antiplagiat.exception.TokenExpiredException
 import com.team.antiplagiat.models.EmailVerificationToken
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.repository.EmailVerificationTokenRepository
@@ -32,10 +35,10 @@ class EmailVerificationService(
 
     @Transactional
     fun sendVerification(email: String) {
-        logger.info { "Отправка письма верификации на $email" }
+        logger.info { "Sending verification email" }
         val user = userRepository.findByEmail(email)
             ?: run {
-                logger.warn { "Пользователь с email $email не найден" }
+                logger.warn { "Verification email requested for unknown user" }
                 meterRegistry.counter("email.verification.user_not_found").increment()
                 return
             }
@@ -46,15 +49,15 @@ class EmailVerificationService(
             return
         }
 
-        val lastToken = tokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByIdDesc(user.id)
-        if (lastToken != null && lastToken.usedAt == null) {
-            val minutesSinceCreation = ChronoUnit.MINUTES.between(lastToken.createdAt, Instant.now())
-            if (minutesSinceCreation < RATE_LIMIT_MINUTES) {
-                logger.warn { "Слишком частая попытка отправки письма для ${user.email}. Осталось ждать ${RATE_LIMIT_MINUTES - minutesSinceCreation} минут" }
-                meterRegistry.counter("email.verification.rate_limited").increment()
-                throw IllegalStateException("Too many requests. Try again later")
-            }
-        }
+         val lastToken = tokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByIdDesc(user.id)
+         if (lastToken != null && lastToken.usedAt == null) {
+             val minutesSinceCreation = ChronoUnit.MINUTES.between(lastToken.createdAt, Instant.now())
+             if (minutesSinceCreation < RATE_LIMIT_MINUTES) {
+                 logger.warn { "Verification email request rate-limited for userId=${user.id}" }
+                 meterRegistry.counter("email.verification.rate_limited").increment()
+                 throw RateLimitException("Too many requests. Try again later")
+             }
+         }
 
         logger.debug { "Удаление активных токенов для пользователя ${user.id}" }
         tokenRepository.deleteActiveByUserId(user.id)
@@ -76,7 +79,7 @@ class EmailVerificationService(
             "${properties.baseUrl}/auth/verify-email?token=$rawToken"
 
         if (!properties.enabled) {
-            logger.info { "Email verification is disabled in dev mode. Verification link for ${user.email}: $link" }
+            logger.info { "Email verification is disabled in dev mode. Verification link: $link" }
             meterRegistry.counter("email.verification.skipped.disabled").increment()
             return
         }
@@ -94,7 +97,7 @@ class EmailVerificationService(
             """.trimIndent()
         )
         meterRegistry.counter("email.verification.sent").increment()
-        logger.info { "Письмо верификации успешно отправлено на ${user.email}" }
+        logger.info { "Verification email sent" }
     }
 
     @Transactional
@@ -109,17 +112,17 @@ class EmailVerificationService(
                 throw IllegalArgumentException("Invalid token")
             }
 
-        if (token.usedAt != null) {
-            logger.warn { "Токен уже использован" }
-            meterRegistry.counter("email.verification.failed.used_token").increment()
-            throw IllegalStateException("Token already used")
-        }
+         if (token.usedAt != null) {
+             logger.warn { "Токен уже использован" }
+             meterRegistry.counter("email.verification.failed.used_token").increment()
+             throw TokenAlreadyUsedException("Token already used")
+         }
 
-        if (token.expiresAt.isBefore(Instant.now())) {
-            logger.warn { "Токен истёк" }
-            meterRegistry.counter("email.verification.failed.expired_token").increment()
-            throw IllegalStateException("Token expired")
-        }
+         if (token.expiresAt.isBefore(Instant.now())) {
+             logger.warn { "Токен истёк" }
+             meterRegistry.counter("email.verification.failed.expired_token").increment()
+             throw TokenExpiredException("Token expired")
+         }
 
         logger.debug { "Отмечаем email как подтверждённый для пользователя ${token.userId}" }
         userRepository.markEmailVerified(token.userId)

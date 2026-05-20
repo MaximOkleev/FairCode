@@ -2,6 +2,9 @@ package com.team.antiplagiat.handler
 
 import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.exception.TooManyAttemptsException
+import com.team.antiplagiat.exception.RateLimitException
+import com.team.antiplagiat.exception.TokenExpiredException
+import com.team.antiplagiat.exception.TokenAlreadyUsedException
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -35,16 +38,49 @@ class GlobalExceptionHandlerTest {
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
     }
 
-    @Test
-    fun `handleTooManyAttempts returns 429 with message`() {
-        val exception = TooManyAttemptsException("Превышен лимит: 5 попыток")
+     @Test
+     fun `handleTooManyAttempts returns 429 with message`() {
+         val exception = TooManyAttemptsException("Превышен лимит: 5 попыток")
 
-        val response = handler.handleTooManyAttempts(exception)
+         val response = handler.handleTooManyAttempts(exception)
 
-        assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.statusCode)
-        assertNotNull(response.body)
-        assertEquals("Превышен лимит: 5 попыток", response.body?.message)
-    }
+         assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.statusCode)
+         assertNotNull(response.body)
+         assertEquals("Превышен лимит: 5 попыток", response.body?.message)
+     }
+
+     @Test
+     fun `handleRateLimit returns 429 with message`() {
+         val exception = RateLimitException("Too many requests. Try again later")
+
+         val response = handler.handleRateLimit(exception)
+
+         assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.statusCode)
+         assertNotNull(response.body)
+         assertEquals("Too many requests. Try again later", response.body?.message)
+     }
+
+     @Test
+     fun `handleTokenExpired returns 400 with message`() {
+         val exception = TokenExpiredException("Token expired")
+
+         val response = handler.handleTokenExpired(exception)
+
+         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+         assertNotNull(response.body)
+         assertEquals("Token expired", response.body?.message)
+     }
+
+     @Test
+     fun `handleTokenAlreadyUsed returns 400 with message`() {
+         val exception = TokenAlreadyUsedException("Token already used")
+
+         val response = handler.handleTokenAlreadyUsed(exception)
+
+         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+         assertNotNull(response.body)
+         assertEquals("Token already used", response.body?.message)
+     }
 
     @Test
     fun `handleMissingParameter returns 400 with parameter name`() {

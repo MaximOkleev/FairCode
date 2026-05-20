@@ -24,8 +24,8 @@ class RegisterController(private val registerService: RegisterService) {
     @PostMapping
     @Operation(summary = "Регистрация нового пользователя", description = "Принимает email и пароль.")
     fun register(@Valid @RequestBody request: RegisterRequest): ResponseEntity<RegisterResponse> {
-        logger.info { "POST /api/register - регистрация нового пользователя: ${request.email}" }
-        logger.debug { "Валидация данных: email=${request.email}, пароль скрыт" }
+        logger.info { "POST /api/register - registration attempt" }
+        logger.debug { "Register request validation started" }
 
         val response = registerService.register(request)
 

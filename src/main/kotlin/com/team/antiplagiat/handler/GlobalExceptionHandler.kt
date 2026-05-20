@@ -4,6 +4,9 @@ import com.team.antiplagiat.exception.ImportFailedException
 import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.exception.InvalidCredentialsException
 import com.team.antiplagiat.exception.TooManyAttemptsException
+import com.team.antiplagiat.exception.RateLimitException
+import com.team.antiplagiat.exception.TokenExpiredException
+import com.team.antiplagiat.exception.TokenAlreadyUsedException
 import com.team.antiplagiat.filter.TraceIdFilter
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.validation.ConstraintViolationException
@@ -44,26 +47,89 @@ class GlobalExceptionHandler {
             )
     }
 
-    @ExceptionHandler(TooManyAttemptsException::class)
-    fun handleTooManyAttempts(
-        ex: TooManyAttemptsException
-    ): ResponseEntity<ErrorResponse> {
+     @ExceptionHandler(TooManyAttemptsException::class)
+     fun handleTooManyAttempts(
+         ex: TooManyAttemptsException
+     ): ResponseEntity<ErrorResponse> {
 
-        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+         val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
 
-        logger.warn {
-            "TooManyAttemptsException | traceId=$traceId | message=${ex.message}"
-        }
+         logger.warn {
+             "TooManyAttemptsException | traceId=$traceId | message=${ex.message}"
+         }
 
-        return ResponseEntity
-            .status(HttpStatus.TOO_MANY_REQUESTS)
-            .body(
-                ErrorResponse(
-                    message = ex.message ?: "Превышен лимит попыток",
-                    traceId = traceId
-                )
-            )
-    }
+         return ResponseEntity
+             .status(HttpStatus.TOO_MANY_REQUESTS)
+             .body(
+                 ErrorResponse(
+                     message = ex.message ?: "Превышен лимит попыток",
+                     traceId = traceId
+                 )
+             )
+     }
+
+     @ExceptionHandler(RateLimitException::class)
+     fun handleRateLimit(
+         ex: RateLimitException
+     ): ResponseEntity<ErrorResponse> {
+
+         val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+
+         logger.warn {
+             "RateLimitException | traceId=$traceId | message=${ex.message}"
+         }
+
+         return ResponseEntity
+             .status(HttpStatus.TOO_MANY_REQUESTS)
+             .body(
+                 ErrorResponse(
+                     message = ex.message ?: "Too many requests",
+                     traceId = traceId
+                 )
+             )
+     }
+
+     @ExceptionHandler(TokenExpiredException::class)
+     fun handleTokenExpired(
+         ex: TokenExpiredException
+     ): ResponseEntity<ErrorResponse> {
+
+         val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+
+         logger.warn {
+             "TokenExpiredException | traceId=$traceId | message=${ex.message}"
+         }
+
+         return ResponseEntity
+             .status(HttpStatus.BAD_REQUEST)
+             .body(
+                 ErrorResponse(
+                     message = ex.message ?: "Token expired",
+                     traceId = traceId
+                 )
+             )
+     }
+
+     @ExceptionHandler(TokenAlreadyUsedException::class)
+     fun handleTokenAlreadyUsed(
+         ex: TokenAlreadyUsedException
+     ): ResponseEntity<ErrorResponse> {
+
+         val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+
+         logger.warn {
+             "TokenAlreadyUsedException | traceId=$traceId | message=${ex.message}"
+         }
+
+         return ResponseEntity
+             .status(HttpStatus.BAD_REQUEST)
+             .body(
+                 ErrorResponse(
+                     message = ex.message ?: "Token already used",
+                     traceId = traceId
+                 )
+             )
+     }
 
     @ExceptionHandler(DataIntegrityViolationException::class)
     fun handleDataIntegrityViolation(
@@ -171,25 +237,25 @@ class GlobalExceptionHandler {
             )
     }
 
-    @ExceptionHandler(IllegalStateException::class)
-    fun handleIllegalState(
-        ex: IllegalStateException
-    ): ResponseEntity<ErrorResponse> {
-        val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
+     @ExceptionHandler(IllegalStateException::class)
+     fun handleIllegalState(
+         ex: IllegalStateException
+     ): ResponseEntity<ErrorResponse> {
+         val traceId = MDC.get(TraceIdFilter.TRACE_ID_KEY)
 
-        logger.warn {
-            "IllegalStateException | traceId=$traceId | message=${ex.message}"
-        }
+         logger.error(ex) {
+             "IllegalStateException | traceId=$traceId | message=${ex.message}"
+         }
 
-        return ResponseEntity
-            .status(HttpStatus.TOO_MANY_REQUESTS)
-            .body(
-                ErrorResponse(
-                    message = ex.message ?: "Too many requests",
-                    traceId = traceId
-                )
-            )
-    }
+         return ResponseEntity
+             .status(HttpStatus.INTERNAL_SERVER_ERROR)
+             .body(
+                 ErrorResponse(
+                     message = ex.message ?: "Internal server error",
+                     traceId = traceId
+                 )
+             )
+     }
 
     @ExceptionHandler(ImportFailedException::class)
     fun handleImportFailed(

@@ -50,11 +50,15 @@ class ZipImportService(
             while (entry != null) {
                 if (!entry.isDirectory) {
                     fileEntriesSeen++
+                    if (fileEntriesSeen > maxFiles) {
+                        stats.skippedFiles++
+                        stats.errors += "Превышено максимальное количество файлов в архиве: $maxFiles"
+                        break
+                    }
+
                     processEntry(
                         zip = zip,
                         entry = entry,
-                        fileEntriesSeen = fileEntriesSeen,
-                        maxFiles = maxFiles,
                         maxEntrySizeBytes = maxEntrySizeBytes,
                         stats = stats
                     )
@@ -87,19 +91,12 @@ class ZipImportService(
     private fun processEntry(
         zip: ZipInputStream,
         entry: java.util.zip.ZipEntry,
-        fileEntriesSeen: Int,
-        maxFiles: Int,
         maxEntrySizeBytes: Long,
         stats: ImportStats
     ) {
         val rawPath = entry.name
 
         try {
-            if (fileEntriesSeen > maxFiles) {
-                stats.skippedFiles++
-                stats.errors += "Превышено максимальное количество файлов в архиве: $maxFiles"
-                return
-            }
 
             val parts = normalizeEntryPath(rawPath)
             if (parts == null) {
@@ -116,6 +113,12 @@ class ZipImportService(
 
             val problemName = relativeParts.first()
             val fileName = relativeParts.last()
+
+            if (problemName.length > 200) {
+                stats.skippedFiles++
+                stats.errors += "Название задачи слишком длинное и было пропущено: $problemName"
+                return
+            }
 
             if (!isAllowedSourceFile(fileName)) {
                 stats.skippedFiles++
@@ -138,6 +141,11 @@ class ZipImportService(
 
             // Извлекаем login из имени файла (без расширения)
             val login = fileName.substringBeforeLast(".")
+            if (login.isBlank()) {
+                stats.skippedFiles++
+                stats.errors += "Не удалось извлечь login из имени файла: $fileName"
+                return
+            }
             val user = userRepository.findByLogin(login)
             if (user == null) {
                 stats.skippedFiles++
@@ -156,13 +164,20 @@ class ZipImportService(
                     stats.problemsCreated++
                 }
 
+            val normalizedFilePath = relativeParts.joinToString("/")
+            if (solutionRepository.existsByUserAndProblemAndFilePath(user, problem, normalizedFilePath)) {
+                stats.skippedFiles++
+                stats.errors += "Решение уже существует и было пропущено: $normalizedFilePath"
+                return
+            }
+
             val solution = Solution(
                 user = user,
                 problem = problem,
                 language = detectLanguage(fileName),
                 status = SolutionStatus.WAITING,
                 submittedAt = LocalDateTime.now(),
-                filePath = relativeParts.joinToString("/"),
+                filePath = normalizedFilePath,
                 code = content
             )
 

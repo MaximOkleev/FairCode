@@ -51,6 +51,25 @@ class UserService(
             logger.warn { "Пользователь id=$id не найден для обновления" }
             return null
         }
+
+        // Check email uniqueness if provided
+        email?.let {
+            val existingByEmail = userRepository.findByEmail(it)
+            if (existingByEmail != null && existingByEmail.id != id) {
+                logger.warn { "Email $it уже зарегистрирован для другого пользователя" }
+                throw IllegalArgumentException("Email already registered")
+            }
+        }
+
+        // Check login uniqueness if provided
+        login?.let {
+            val existingByLogin = userRepository.findByLogin(it)
+            if (existingByLogin != null && existingByLogin.id != id) {
+                logger.warn { "Login $it уже зарегистрирован для другого пользователя" }
+                throw IllegalArgumentException("Login already registered")
+            }
+        }
+
         login?.let { user.login = it }
         email?.let { user.email = it }
         val saved = userRepository.save(user)

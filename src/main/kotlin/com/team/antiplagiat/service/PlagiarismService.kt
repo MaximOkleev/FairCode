@@ -51,7 +51,9 @@ class PlagiarismService(
             .findFirstByStatusOrderByFinishedAtDesc(PlagiarismCheckRunStatus.COMPLETED)
             ?: return emptyList()
 
-        return PlagiarismGrouping.buildGroups(plagiarismMatchRepository.findAllByCheckRun(latestCompletedRun))
+        return PlagiarismGrouping.buildGroups(
+            plagiarismMatchRepository.findAllByCheckRunWithSolutions(latestCompletedRun)
+        )
     }
 
     @Transactional(readOnly = true)
@@ -60,7 +62,7 @@ class PlagiarismService(
             .findFirstByStatusOrderByFinishedAtDesc(PlagiarismCheckRunStatus.COMPLETED)
             ?: return emptyList()
 
-        val matches = plagiarismMatchRepository.findAllByCheckRun(latestCompletedRun)
+        val matches = plagiarismMatchRepository.findAllByCheckRunWithSolutions(latestCompletedRun)
         return matches.map { m ->
             PlagiarismSimpleResultResponse(
                 problem = m.firstSolution.problem.name,

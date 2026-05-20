@@ -62,7 +62,8 @@ CREATE TABLE IF NOT EXISTS solutions (
     submitted_at TIMESTAMP NOT NULL,
     file_path TEXT NOT NULL,
     code TEXT,
-    created_at TIMESTAMP NOT NULL
+    created_at TIMESTAMP NOT NULL,
+    CONSTRAINT uk_solutions_user_problem_file_path UNIQUE (user_id, problem_id, file_path)
 );
 
 CREATE TABLE IF NOT EXISTS plagiarism_check_runs (

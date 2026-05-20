@@ -72,9 +72,7 @@ class ImportController(
             ResponseEntity.ok(response)
         } catch (ex: Exception) {
             importJobService.failJob(job.id, payload.userId, ex.message ?: "ZIP import failed")
-            // Оборачиваем оригинальное исключение в ImportFailedException, чтобы глобальный обработчик
-            // вернул понятный JSON с message и traceId, а не пустой 500.
-            throw ImportFailedException(ex.message ?: "ZIP import failed", ex)
+            throw ImportFailedException("ZIP import failed. Check import job history for details.", ex)
         }
     }
 

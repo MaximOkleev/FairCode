@@ -212,16 +212,161 @@ class ZipImportServiceTest {
         assertTrue(response.errors.any { it.contains("Файл слишком большой") })
     }
 
+    @Test
+    fun `importZip skips task with too long problem name`() {
+        val problemRepository = repoProxy(ProblemRepository::class.java) { method, _ -> defaultValue(method.returnType) }
+        val solutionRepository = repoProxy(SolutionRepository::class.java) { method, _ -> defaultValue(method.returnType) }
+        val userRepository = repoProxy(UserRepository::class.java) { method, _ -> defaultValue(method.returnType) }
+
+        val longProblemName = "a".repeat(201)
+        val service = ZipImportService(problemRepository, solutionRepository, userRepository, ZipImportProperties(), SimpleMeterRegistry())
+        val response = service.importZip(multipartZip("$longProblemName/ivan.cpp" to "int main() { return 0; }"))
+
+        assertEquals(0, response.problemsCreated)
+        assertEquals(0, response.solutionsCreated)
+        assertEquals(1, response.skippedFiles)
+        assertEquals(1, response.errors.size)
+        assertTrue(response.errors.single().contains("Название задачи слишком длинное"))
+    }
+
+    @Test
+    fun `importZip skips file when login extracted from file name is blank`() {
+        val problemRepository = repoProxy(ProblemRepository::class.java) { method, _ -> defaultValue(method.returnType) }
+        val solutionRepository = repoProxy(SolutionRepository::class.java) { method, _ -> defaultValue(method.returnType) }
+        val userRepository = repoProxy(UserRepository::class.java) { method, _ -> defaultValue(method.returnType) }
+
+        val service = ZipImportService(problemRepository, solutionRepository, userRepository, ZipImportProperties(), SimpleMeterRegistry())
+        val response = service.importZip(multipartZip("Task/.cpp" to "int main() { return 0; }"))
+
+        assertEquals(0, response.problemsCreated)
+        assertEquals(0, response.solutionsCreated)
+        assertEquals(1, response.skippedFiles)
+        assertEquals(1, response.errors.size)
+        assertEquals("Не удалось извлечь login из имени файла: .cpp", response.errors.single())
+    }
+
+    @Test
+    fun `importZip skips duplicate solution on repeated archive import`() {
+        val savedProblems = mutableListOf<Problem>()
+        val savedSolutions = mutableListOf<Solution>()
+        val user = User(id = 1L, login = "ivan", email = "ivan@example.com")
+
+        val problemRepository = repoProxy(ProblemRepository::class.java) { method, args ->
+            when (method.name) {
+                "findFirstByName" -> savedProblems.firstOrNull { it.name == args?.firstOrNull() as String }
+                "save" -> {
+                    val problem = args?.firstOrNull() as Problem
+                    savedProblems += problem
+                    problem
+                }
+                else -> defaultValue(method.returnType)
+            }
+        }
+        val solutionRepository = repoProxy(SolutionRepository::class.java) { method, args ->
+            when (method.name) {
+                "existsByUserAndProblemAndFilePath" -> {
+                    val candidateUser = args?.getOrNull(0) as User
+                    val candidateProblem = args.getOrNull(1) as Problem
+                    val candidateFilePath = args.getOrNull(2) as String
+                    savedSolutions.any {
+                        it.user.id == candidateUser.id &&
+                            it.problem.id == candidateProblem.id &&
+                            it.filePath == candidateFilePath
+                    }
+                }
+                "save" -> {
+                    val solution = args?.firstOrNull() as Solution
+                    savedSolutions += solution
+                    solution
+                }
+                else -> defaultValue(method.returnType)
+            }
+        }
+        val userRepository = repoProxy(UserRepository::class.java) { method, _ ->
+            when (method.name) {
+                "findByLogin" -> user
+                else -> defaultValue(method.returnType)
+            }
+        }
+
+        val service = ZipImportService(problemRepository, solutionRepository, userRepository, ZipImportProperties(), SimpleMeterRegistry())
+        val firstResponse = service.importZip(multipartZip("Solutions/Task/ivan.cpp" to "int main() { return 0; }"))
+        val secondResponse = service.importZip(multipartZip("Solutions/Task/ivan.cpp" to "int main() { return 0; }"))
+
+        assertEquals(1, firstResponse.solutionsCreated)
+        assertEquals(0, firstResponse.skippedFiles)
+        assertEquals(1, savedSolutions.size)
+
+        assertEquals(0, secondResponse.solutionsCreated)
+        assertEquals(1, secondResponse.skippedFiles)
+        assertEquals(1, secondResponse.errors.size)
+        assertEquals("Решение уже существует и было пропущено: Task/ivan.cpp", secondResponse.errors.single())
+        assertEquals(1, savedSolutions.size)
+    }
+
+    @Test
+    fun `importZip stops immediately after file limit exceeded`() {
+        val savedProblems = mutableListOf<Problem>()
+        val savedSolutions = mutableListOf<Solution>()
+
+        val problemRepository = repoProxy(ProblemRepository::class.java) { method, args ->
+            when (method.name) {
+                "findFirstByName" -> savedProblems.firstOrNull { it.name == args?.firstOrNull() as String }
+                "save" -> {
+                    val problem = args?.firstOrNull() as Problem
+                    savedProblems += problem
+                    problem
+                }
+                else -> defaultValue(method.returnType)
+            }
+        }
+        val solutionRepository = repoProxy(SolutionRepository::class.java) { method, args ->
+            when (method.name) {
+                "save" -> {
+                    val solution = args?.firstOrNull() as Solution
+                    savedSolutions += solution
+                    solution
+                }
+                else -> defaultValue(method.returnType)
+            }
+        }
+        val userRepository = repoProxy(UserRepository::class.java) { method, _ ->
+            when (method.name) {
+                "findByLogin" -> User(id = 1L, login = "ivan", email = "ivan@example.com")
+                else -> defaultValue(method.returnType)
+            }
+        }
+        val props = ZipImportProperties().apply { maxFiles = 1 }
+
+        val service = ZipImportService(problemRepository, solutionRepository, userRepository, props, SimpleMeterRegistry())
+        val response = service.importZip(
+            multipartZip(
+                "Solutions/Task/ivan.cpp" to "int main() { return 0; }",
+                "Solutions/Task/petr.cpp" to "int main() { return 1; }",
+                "Solutions/Task/sergey.cpp" to "int main() { return 2; }"
+            )
+        )
+
+        assertEquals(1, response.solutionsCreated)
+        assertEquals(1, response.skippedFiles)
+        assertEquals(1, response.errors.size)
+        assertEquals("Превышено максимальное количество файлов в архиве: 1", response.errors.single())
+        assertEquals(1, savedSolutions.size)
+        assertEquals(1, savedProblems.size)
+    }
+
     private fun <T> repoProxy(type: Class<T>, handler: (Method, Array<out Any?>?) -> Any?): T {
         val proxy = Proxy.newProxyInstance(
             type.classLoader,
             arrayOf(type),
-            InvocationHandler { _, method, args ->
-                when (method.name) {
-                    "toString" -> "repoProxy(${type.simpleName})"
-                    "hashCode" -> System.identityHashCode(this)
-                    "equals" -> false
-                    else -> handler(method, args)
+            object : InvocationHandler {
+                override fun invoke(proxy: Any?, method: Method, args: Array<out Any?>?): Any? {
+                    return when (method.name) {
+                        "toString" -> "repoProxy(${type.simpleName})"
+                        "hashCode" -> System.identityHashCode(this)
+                        "equals" -> false
+                        else -> handler(method, args)
+                    }
                 }
             }
         )
@@ -233,11 +378,11 @@ class ZipImportServiceTest {
         java.lang.Boolean.TYPE -> false
         java.lang.Byte.TYPE -> 0.toByte()
         java.lang.Short.TYPE -> 0.toShort()
-        java.lang.Integer.TYPE -> 0
+        Int::class.javaPrimitiveType -> 0
         java.lang.Long.TYPE -> 0L
         java.lang.Float.TYPE -> 0f
         java.lang.Double.TYPE -> 0.0
-        java.lang.Character.TYPE -> '\u0000'
+        Char::class.javaPrimitiveType -> '\u0000'
         else -> null
     }
 
