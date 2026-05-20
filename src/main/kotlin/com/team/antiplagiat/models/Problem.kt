@@ -1,7 +1,18 @@
 package com.team.antiplagiat.models
 
-data class Problem(
-    override val id: Long,  // ID задачи
-    val name: String,       // Название задачи
-    val description: String? = null // Описание задачи, может быть null
-) : Entity
+import jakarta.persistence.*
+
+@Entity
+@Table(name = "problems")
+class Problem(
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    var id: Long = 0,
+
+    @Column(nullable = false, unique = true)
+    var name: String = "",
+
+    var description: String? = null,
+
+    @Column(columnDefinition = "TEXT")
+    var condition: String? = null
+)

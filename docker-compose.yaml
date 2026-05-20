@@ -1,69 +1,154 @@
-version: "3.9"  # Версия синтаксиса Docker Compose
+services: #раздел с описанием сервисов (контейнеров)
 
-services:  # Раздел с описанием сервисов (контейнеров)
+  postgres:   # Сервис базы данных PostgreSQL
+    image: postgres:15-alpine # Используется официальный образ PostgreSQL 15 на базе Alpine (лёгкий образ)
+    container_name: antiplagiat-db # Явное имя контейнера (удобно для логов и exec)
 
-  postgres:  # Сервис базы данных PostgreSQL
-    image: postgres:15-alpine  # Используется официальный образ PostgreSQL 15 на базе Alpine (лёгкий образ)
-    container_name: antiplagiat-db  # Явное имя контейнера (удобно для логов и exec)
+    restart: unless-stopped
 
-    environment:  # Переменные окружения для инициализации БД
-      POSTGRES_DB: testdb          # Имя базы данных, создаваемой при первом запуске
-      POSTGRES_USER: user          # Пользователь базы данных
-      POSTGRES_PASSWORD: pass      # Пароль пользователя
+    environment: # Переменные окружения для инициализации БД
+      POSTGRES_DB: antiplagiat # имя базы данных, которая будет создана при первом запуске
+      POSTGRES_USER: postgres #пользователь базы данных (по умолчанию "postgres")
+      POSTGRES_PASSWORD: postgres # пароль для пользователя (по умолчанию "postgres")
 
     ports:
-      - "5432:5432"  # Проброс порта: <порт_хоста>:<порт_контейнера>
-      # Позволяет подключаться к БД с хоста через localhost:5432
+      - "5432:5432" # Проброс порта PostgreSQL наружу (хост:контейнер)
+    #позволяет подключаться к БД с хоста (например, для отладки) и обеспечивает связь между контейнерами по имени "postgres:5432"
+
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Монтирование volume:
-      # postgres_data — именованный volume
-      # /var/lib/postgresql/data — директория хранения данных PostgreSQL внутри контейнера
-      # Обеспечивает сохранность данных при перезапуске контейнера
+        # Монтирование volume:
+        # postgres_data — именованный volume
+        # /var/lib/postgresql/data — директория хранения данных PostgreSQL внутри контейнера
+        # Обеспечивает сохранность данных при перезапуске контейнера
+    healthcheck: #проверка готовности сервиса
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d antiplagiat" ]
+        # Команда проверки:
+        # pg_isready — утилита PostgreSQL
+        # Проверяет, принимает ли сервер подключения
+      interval: 5s #интервал между проверками
+      timeout: 5s #макс время ожидания ответа от проверки
+      retries: 10 #количество попыток перед признанием сервиса нездоровым
 
-    healthcheck:  # Проверка готовности сервиса
-      test: [ "CMD-SHELL", "pg_isready -U user -d testdb" ]
-      # Команда проверки:
-      # pg_isready — утилита PostgreSQL
-      # Проверяет, принимает ли сервер подключения
+  # Основное приложение Spring Boot
+  # Строится из Dockerfile в корне проекта
+  # Зависит от postgres. Email отправляется через Resend или логируется в dev-mode.
+  # Доступно по порту 8080
+  app: # Сервис Spring Boot приложения
+    build: # Сборка образа из Dockerfile
+      context: .
 
-      interval: 5s  # Интервал между проверками
-      timeout: 5s   # Максимальное время ожидания ответа
-      retries: 5    # Количество попыток до признания контейнера unhealthy
+    container_name: antiplagiat-app # Явное имя контейнера
 
-  app:  # Сервис Spring Boot приложения
-    build: .  # Сборка образа из Dockerfile в текущей директории
-    container_name: antiplagiat-app  # Явное имя контейнера
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
 
     ports:
       - "8080:8080"
       # Проброс порта:
       # Приложение будет доступно по http://localhost:8080
 
-    environment:  # Переменные окружения для Spring Boot
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/testdb
-      # JDBC URL подключения к БД
-      # Важно: используется имя сервиса "postgres" как hostname
-      # Docker Compose создаёт внутреннюю сеть,
-      # и сервисы могут обращаться друг к другу по имени
+    environment: # Переменные окружения для Spring Boot
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/antiplagiat
+        # JDBC URL подключения к БД
+        # Важно: используется имя сервиса "postgres" как hostname
+        # Docker Compose создаёт внутреннюю сеть,
+        # и сервисы могут обращаться друг к другу по имени
 
-      SPRING_DATASOURCE_USERNAME: user   # Пользователь БД
-      SPRING_DATASOURCE_PASSWORD: pass   # Пароль БД
+      SPRING_DATASOURCE_USERNAME: postgres #пользователь БД
+      SPRING_DATASOURCE_PASSWORD: postgres #пароль БД
 
-      MAX_ATTEMPTS: 100           # Пользовательская переменная (используется в приложении)
-      MAX_DURATION_HOURS: 8       # Пользовательская переменная (используется в приложении)
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+      # Spring Security Configuration
+      # Security включена: все /api/** требуют JWT, кроме /api/register и /api/auth/**
+      APP_SECURITY_ENABLED: "true"
+      APP_SECURITY_USER_PROVIDER: database
+
+      # Resend email delivery
+      APP_RESEND_ENABLED: "true"
+      RESEND_API_KEY: ""
+      RESEND_FROM_EMAIL: "onboarding@resend.dev"
+      APP_BASE_URL: "http://localhost:8080/api"
+
+      # APP_SECURITY_MEMORY_USERNAME: admin            # in-memory user (не используется)
+      # APP_SECURITY_MEMORY_PASSWORD: admin            # in-memory password (не используется)
+
+      # Monitoring
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+      MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED: "true"
+
+      # Custom app properties
+      APP_SOLUTION_MAX_ATTEMPTS: 100 # Пользовательская переменная (используется в приложении как maxAttempts)
+      APP_CONTEST_MAX_DURATION_HOURS: 8 # Пользовательская переменная (используется в приложении как maxDurationHours)
+
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health" ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  # Сервис мониторинга Prometheus
+  # Собирает метрики с приложения
+  # Зависит от app (ожидает, пока приложение станет здоровым)
+  # Доступен по порту 9090
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: antiplagiat-prometheus
+
+    restart: unless-stopped
 
     depends_on:
-      postgres:
+      app:
         condition: service_healthy
-        # Гарантирует, что контейнер app запустится
-        # только после успешного прохождения healthcheck у postgres
-        # Важно: это НЕ гарантирует логическую готовность БД,
-        # но гарантирует, что контейнер запущен и отвечает
 
+    ports:
+      - "9090:9090"
+
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+
+  # Сервис визуализации Grafana
+  # Использует данные из Prometheus для создания дашбордов
+  # Зависит от prometheus
+  # Доступен по порту 3000 (логин/пароль: admin/admin)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: antiplagiat-grafana
+
+    restart: unless-stopped
+
+    depends_on:
+      - prometheus
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+  # MailHog - локальный SMTP сервер для тестирования email
+  # (Удален - используется Resend API для отправки email)
+
+# Объявление именованных томов для персистентного хранения данных
+# postgres_data: данные PostgreSQL
+# prometheus_data: метрики Prometheus
+# grafana_data: дашборды и настройки Grafana
 volumes:
   postgres_data:
-  # Объявление именованного volume
-  # Docker создаёт его автоматически при первом запуске
-  # Используется для постоянного хранения данных PostgreSQL
+  prometheus_data:
+  grafana_data:

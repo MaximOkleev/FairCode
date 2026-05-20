@@ -2,19 +2,69 @@ spring:
   application:
     name: antiplagiat
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/testdb}
-    username: ${SPRING_DATASOURCE_USERNAME:user}
-    password: ${SPRING_DATASOURCE_PASSWORD:pass}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/antiplagiat}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+  sql:
+    init:
+      mode: always
   jpa:
     hibernate:
       ddl-auto: update
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-
-antiplagiat:
-  max-attempts: ${maxAttempts:50}
-
+    show-sql: true
+    defer-datasource-initialization: true
+server:
+  error:
+    include-message: always
+    include-stacktrace: always
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    com.team.antiplagiat: DEBUG
+    org.springframework.security: DEBUG
+  config: classpath:monitoring/logback-spring.xml
 app:
+  solution:
+    max-attempts: 50
+  ai-generation:
+    temperature: ${AI_GENERATION_TEMPERATURE:0.2}
+    max-tokens: ${AI_GENERATION_MAX_TOKENS:4096}
+    openrouter:
+      api-key: ${OPENROUTER_API_KEY:}
+      base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+      http-referer: ${OPENROUTER_HTTP_REFERER:}
+      app-title: ${OPENROUTER_APP_TITLE:antiplagiat}
+    models:
+      chatgpt: ${OPENROUTER_CHATGPT_MODEL:openai/gpt-5.1}
+      gemini: ${OPENROUTER_GEMINI_MODEL:google/gemini-3.1-flash-lite}
+      deepseek: ${OPENROUTER_DEEPSEEK_MODEL:deepseek/deepseek-v4-flash}
   contest:
-    max-duration-hours: ${maxDurationHours:5}
+    max-duration-hours: 5
+  resend:
+    enabled: ${APP_RESEND_ENABLED:false}
+    api-key: ${RESEND_API_KEY:}
+    from: ${RESEND_FROM_EMAIL:onboarding@resend.dev}
+    base-url: ${APP_BASE_URL:http://localhost:8080/api}
+  security:
+    enabled: ${APP_SECURITY_ENABLED:false}
+    user-provider: ${APP_SECURITY_USER_PROVIDER:database}
+    memory:
+      username: ${APP_SECURITY_MEMORY_USERNAME:admin}
+      password: ${APP_SECURITY_MEMORY_PASSWORD:admin}
+      roles: ${APP_SECURITY_MEMORY_ROLES:ADMIN}
+    jwt:
+      secret: ${APP_SECURITY_JWT_SECRET:dev-secret-change-me}
+      expiration-seconds: ${APP_SECURITY_JWT_EXPIRATION_SECONDS:86400}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus,health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true
