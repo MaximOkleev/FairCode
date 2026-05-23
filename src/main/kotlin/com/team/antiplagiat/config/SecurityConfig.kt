@@ -19,6 +19,9 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 
 private val logger = KotlinLogging.logger {}
@@ -38,6 +41,21 @@ class SecurityConfig(private val env: Environment) {
 
     @Bean
     fun jsonAccessDeniedHandler(objectMapper: ObjectMapper): AccessDeniedHandler = JsonAccessDeniedHandler(objectMapper)
+
+    @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val configuration = CorsConfiguration().apply {
+            allowedOriginPatterns = listOf("*")
+            allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+            allowedHeaders = listOf("*")
+            allowCredentials = false
+            maxAge = 3600
+        }
+
+        return UrlBasedCorsConfigurationSource().apply {
+            registerCorsConfiguration("/**", configuration)
+        }
+    }
 
     @Bean
     fun userDetailsService(
@@ -77,6 +95,7 @@ class SecurityConfig(private val env: Environment) {
     @Bean
     fun securityFilterChain(http: HttpSecurity, authEntryPointProvider: ObjectProvider<AuthenticationEntryPoint>, accessDeniedProvider: ObjectProvider<AccessDeniedHandler>): SecurityFilterChain {
         val enabled = env.getProperty("app.security.enabled", Boolean::class.java, false)
+        http.cors { }
         http.csrf { it.disable() }
         if (!enabled) {
             http.authorizeHttpRequests { it.anyRequest().permitAll() }

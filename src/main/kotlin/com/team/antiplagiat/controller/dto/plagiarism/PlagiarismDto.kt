@@ -2,13 +2,16 @@ package com.team.antiplagiat.controller.dto.plagiarism
 
 import com.team.antiplagiat.models.PlagiarismMatch
 import com.team.antiplagiat.models.PlagiarismCheckRun
-import com.team.antiplagiat.models.PlagiarismCheckRunStatus
 import com.team.antiplagiat.models.Solution
 import java.time.LocalDateTime
 
 data class PlagiarismCheckSummaryResponse(
     val runId: Long,
-    val status: PlagiarismCheckRunStatus,
+    val checkType: String?,
+    val ownerId: Long?,
+    val contestId: Long?,
+    val problemId: Long?,
+    val solutionId: Long?,
     val checkedSolutions: Int,
     val comparedPairs: Int,
     val matches: Int,
@@ -23,7 +26,11 @@ data class PlagiarismCheckSummaryResponse(
         fun fromEntity(run: PlagiarismCheckRun): PlagiarismCheckSummaryResponse =
             PlagiarismCheckSummaryResponse(
                 runId = run.id,
-                status = run.status,
+                checkType = run.checkType.name,
+                ownerId = run.ownerId,
+                contestId = run.contestId,
+                problemId = run.problemId,
+                solutionId = run.solutionId,
                 checkedSolutions = run.checkedSolutions,
                 comparedPairs = run.comparedPairs,
                 matches = run.matches,

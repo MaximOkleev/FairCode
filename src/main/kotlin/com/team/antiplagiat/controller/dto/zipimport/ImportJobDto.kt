@@ -4,7 +4,6 @@ import java.time.LocalDateTime
 
 data class ImportJobDto(
     val id: Long,
-    val status: String,
     val fileName: String,
     val createdAt: LocalDateTime,
     val startedAt: LocalDateTime?,

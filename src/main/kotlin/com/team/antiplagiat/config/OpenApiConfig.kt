@@ -50,13 +50,8 @@ class OpenApiConfig {
             )
             .addServersItem(
                 Server()
-                    .url("http://localhost:8080")
-                    .description("Local Development Server")
-            )
-            .addServersItem(
-                Server()
-                    .url("http://localhost:8080")
-                    .description("Docker Environment (docker-compose)")
+                    .url("/")
+                    .description("Current server")
             )
             .components(
                 Components().addSecuritySchemes(
@@ -73,4 +68,3 @@ class OpenApiConfig {
             )
     }
 }
-

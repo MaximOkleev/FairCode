@@ -3,6 +3,7 @@ package com.team.antiplagiat.service
 import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.repository.ProblemRepository
+import com.team.antiplagiat.repository.SolutionRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Service
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional
 class ProblemService(
     private val problemRepository: ProblemRepository,
+    private val solutionRepository: SolutionRepository,
     private val meterRegistry: MeterRegistry
 ) {
 
@@ -156,6 +158,9 @@ class ProblemService(
          }
 
          return try {
+             val problem = problemRepository.findById(id)
+                 .orElseThrow { ResourceNotFoundException("Problem with id=$id not found") }
+             solutionRepository.deleteAllByProblem(problem)
              problemRepository.deleteById(id)
              logger.info { "Задача успешно удалена: id=$id" }
              logger.debug { "Операция DELETE завершена успешно для id=$id" }

@@ -118,7 +118,6 @@ class ImportJobService(
 
         return ImportJobDto(
             id = job.id,
-            status = job.status.name,
             fileName = job.fileName,
             createdAt = job.createdAt,
             startedAt = job.startedAt,

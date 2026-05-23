@@ -63,6 +63,30 @@ class CodePlagiarismDetectorTest {
     }
 
     @Test
+    fun `check should merge overlapping matched line fragments`() {
+        val firstCode = """
+            fun sum(a: Int, b: Int): Int {
+                val result = a + b
+                return result
+            }
+        """.trimIndent()
+        val secondCode = """
+            fun add(x: Int, y: Int): Int {
+                val answer = x + y
+                return answer
+            }
+        """.trimIndent()
+
+        val result = CodePlagiarismDetector.check(firstCode, secondCode)
+
+        assertTrue(result.isPlagiarism)
+        assertEquals(
+            listOf(CodeMatchedFragment(1, 4, 1, 4)),
+            result.matchedFragments
+        )
+    }
+
+    @Test
     fun `check should mark substantially different code as not plagiarism`() {
         val firstCode = """
             fun factorial(n: Int): Int {

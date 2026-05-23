@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -44,5 +45,31 @@ class AiGeneratedSolutionController(
 
         val solutions = aiGeneratedSolutionService.findByProblem(problemId)
         return ResponseEntity.ok(solutions.map { AiGeneratedSolutionResponse.fromEntity(it) })
+    }
+
+    @GetMapping("/{id}")
+    fun getById(
+        @PathVariable problemId: Long,
+        @PathVariable id: Long,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<AiGeneratedSolutionResponse> {
+        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+        val solution = aiGeneratedSolutionService.findById(id)
+        return ResponseEntity.ok(AiGeneratedSolutionResponse.fromEntity(solution))
+    }
+
+    @DeleteMapping("/{id}")
+    fun delete(
+        @PathVariable problemId: Long,
+        @PathVariable id: Long,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<Void> {
+        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+        aiGeneratedSolutionService.deleteById(id)
+        return ResponseEntity.noContent().build()
     }
 }

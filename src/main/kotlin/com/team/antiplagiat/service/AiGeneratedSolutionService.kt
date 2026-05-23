@@ -6,6 +6,7 @@ import com.team.antiplagiat.models.AiGeneratedSolution
 import com.team.antiplagiat.models.AiGeneratedSolutionStatus
 import com.team.antiplagiat.models.AiProvider
 import com.team.antiplagiat.repository.AiGeneratedSolutionRepository
+import com.team.antiplagiat.repository.AiPlagiarismMatchRepository
 import com.team.antiplagiat.repository.ProblemRepository
 import com.team.antiplagiat.service.ai.OpenRouterClient
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional
 class AiGeneratedSolutionService(
     private val problemRepository: ProblemRepository,
     private val aiGeneratedSolutionRepository: AiGeneratedSolutionRepository,
+    private val aiPlagiarismMatchRepository: AiPlagiarismMatchRepository,
     private val openRouterClient: OpenRouterClient,
     private val properties: AiGenerationProperties,
     private val meterRegistry: MeterRegistry
@@ -28,12 +30,18 @@ class AiGeneratedSolutionService(
         val problem = problemRepository.findById(problemId)
             .orElseThrow { ResourceNotFoundException("Задача с id=$problemId не найдена") }
 
+        val existingSuccessfulProviders = aiGeneratedSolutionRepository
+            .findAllByProblemAndNormalizedLanguage(problemId, language)
+            .filter { it.status == AiGeneratedSolutionStatus.SUCCESS && !it.code.isNullOrBlank() }
+            .map { it.provider }
+            .toSet()
+
         val prompt = buildPrompt(problem.name, problem.description, problem.condition, language)
         val targets = listOf(
             AiProvider.CHATGPT to properties.models.chatgpt,
             AiProvider.GEMINI to properties.models.gemini,
             AiProvider.DEEPSEEK to properties.models.deepseek
-        )
+        ).filter { (provider, _) -> provider !in existingSuccessfulProviders }
 
         return targets.map { (provider, modelName) ->
             val generatedSolution = try {
@@ -77,6 +85,20 @@ class AiGeneratedSolutionService(
             throw ResourceNotFoundException("Задача с id=$problemId не найдена")
         }
         return aiGeneratedSolutionRepository.findAllByProblemIdOrderByGeneratedAtDesc(problemId)
+    }
+
+    @Transactional(readOnly = true)
+    fun findById(id: Long): AiGeneratedSolution =
+        aiGeneratedSolutionRepository.findById(id)
+            .orElseThrow { ResourceNotFoundException("AI-решение с id=$id не найдено") }
+
+    @Transactional
+    fun deleteById(id: Long) {
+        val solution = aiGeneratedSolutionRepository.findById(id)
+            .orElseThrow { ResourceNotFoundException("AI-решение с id=$id не найдено") }
+
+        aiPlagiarismMatchRepository.deleteAllByAiSolution(solution)
+        aiGeneratedSolutionRepository.delete(solution)
     }
 
     private fun buildPrompt(name: String, description: String?, condition: String?, language: String): String {

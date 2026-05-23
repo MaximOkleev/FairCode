@@ -6,7 +6,7 @@ import java.time.LocalDateTime
 @Entity
 @Table(
     name = "solutions",
-    uniqueConstraints = [UniqueConstraint(columnNames = ["user_id", "problem_id", "file_path"])]
+    uniqueConstraints = [UniqueConstraint(columnNames = ["user_id", "contest_id", "problem_id", "file_path"])]
 )
 class Solution(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,6 +19,10 @@ class Solution(
     @ManyToOne
     @JoinColumn(name = "problem_id", nullable = false)
     var problem: Problem = Problem(),
+
+    @ManyToOne
+    @JoinColumn(name = "contest_id")
+    var contest: Contest? = null,
 
     @Column(nullable = false)
     var language: String = "",
@@ -33,6 +37,7 @@ class Solution(
     @Column(name = "file_path", nullable = false)
     var filePath: String = "",
 
+    @Column(columnDefinition = "TEXT")
     var code: String? = null,
 
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -1,9 +1,8 @@
 package com.team.antiplagiat.controller
 
 import com.team.antiplagiat.config.TokenPayloadExtractor
-import com.team.antiplagiat.controller.dto.solution.SolutionRequest
 import com.team.antiplagiat.controller.dto.solution.SolutionResponse
-import com.team.antiplagiat.models.SolutionStatus
+import com.team.antiplagiat.controller.dto.solution.SolutionTextRequest
 import com.team.antiplagiat.service.SolutionService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -23,42 +22,6 @@ private val logger = KotlinLogging.logger {}
 @RequestMapping("/api/solutions")
 @Tag(name = "Solutions", description = "API для управления решениями код-документов")
 class SolutionController(private val solutionService: SolutionService) {
-
-    @PostMapping
-    @Operation(
-        summary = "Создать новое решение",
-        description = "Загружает новое решение для проверки на плагиат. Требует problemId, language и filePath. userId извлекается из токена."
-    )
-    @ApiResponses(
-        value = [
-            ApiResponse(responseCode = "201", description = "Решение успешно создано"),
-            ApiResponse(responseCode = "400", description = "Ошибка валидации данных"),
-            ApiResponse(responseCode = "401", description = "Не авторизирован"),
-            ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
-        ]
-    )
-    fun create(
-        @Valid @RequestBody request: SolutionRequest,
-        httpRequest: HttpServletRequest
-    ): ResponseEntity<SolutionResponse> {
-        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
-
-        logger.info { "POST /api/solutions - создание от пользователя ${payload.userId}, задача ${request.problemId}" }
-        if (request.problemId <= 0) {
-            logger.warn { "Пользователь ${payload.userId} отправил неверный problemId: ${request.problemId}" }
-            return ResponseEntity.badRequest().build()
-        }
-        val solution = solutionService.create(
-            userId = payload.userId,
-            problemId = request.problemId,
-            language = request.language,
-            filePath = request.filePath,
-            code = request.code
-        )
-        logger.info { "Решение создано: id=${solution.id}, пользователь ${payload.userId}" }
-        return ResponseEntity.status(HttpStatus.CREATED).body(SolutionResponse.fromEntity(solution))
-    }
 
     @GetMapping("/{id}")
     @Operation(
@@ -84,9 +47,6 @@ class SolutionController(private val solutionService: SolutionService) {
 
         logger.debug { "GET /api/solutions/$id - пользователь ${payload.userId}" }
         val solution = solutionService.findById(id)
-        if (solution == null) {
-            return ResponseEntity.notFound().build()
-        }
 
         // Пользователь может получить только свое решение или администратор может получить любое
         if (solution.user.id != payload.userId && payload.role != "ADMIN") {
@@ -98,90 +58,29 @@ class SolutionController(private val solutionService: SolutionService) {
         return ResponseEntity.ok(SolutionResponse.fromEntity(solution))
     }
 
-    @GetMapping
+    @PutMapping("/{id}")
     @Operation(
-        summary = "Получить все решения",
-        description = "Возвращает список решений. Администраторы видят все решения, обычные пользователи видят только свои."
+        summary = "Изменить решение по ID",
+        description = "Обновляет язык, путь файла и текст кода у решения текущего пользователя."
     )
-    @ApiResponse(responseCode = "200", description = "Список решений успешно получен")
-    fun getAll(httpRequest: HttpServletRequest): ResponseEntity<List<SolutionResponse>> {
+    fun update(
+        @Parameter(description = "ID решения", example = "1")
+        @PathVariable id: Long,
+        @Valid @RequestBody request: SolutionTextRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<SolutionResponse> {
         val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
 
-        logger.debug { "GET /api/solutions - пользователь ${payload.userId}" }
-        val solutions = if (payload.role == "ADMIN") {
-            logger.debug { "Администратор ${payload.userId} получает все решения" }
-            solutionService.findAll()
-        } else {
-            logger.debug { "Пользователь ${payload.userId} получает свои решения" }
-            solutionService.findByUser(payload.userId)
-        }
-
-        logger.debug { "Найдено решений: ${solutions.size}" }
-        return ResponseEntity.ok(solutions.map { SolutionResponse.fromEntity(it) })
+        val updated = solutionService.updateOwned(
+            ownerId = payload.userId,
+            solutionId = id,
+            language = request.language,
+            filePath = request.filePath,
+            code = request.code
+        )
+        return ResponseEntity.ok(SolutionResponse.fromEntity(updated))
     }
-
-    @GetMapping("/user")
-    @Operation(
-        summary = "Получить решения текущего пользователя",
-        description = "Возвращает все решения, загруженные текущим пользователем (из токена)"
-    )
-    @ApiResponses(
-        value = [
-            ApiResponse(responseCode = "200", description = "Решения найдены"),
-            ApiResponse(responseCode = "401", description = "Не авторизирован"),
-            ApiResponse(responseCode = "404", description = "Решения не найдены")
-        ]
-    )
-    fun getByUser(httpRequest: HttpServletRequest): ResponseEntity<List<SolutionResponse>> {
-        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
-
-        logger.debug { "GET /api/solutions/user - пользователь ${payload.userId} получает свои решения" }
-        val solutions = solutionService.findByUser(payload.userId)
-        logger.debug { "Найдено решений: ${solutions.size}" }
-        return ResponseEntity.ok(solutions.map { SolutionResponse.fromEntity(it) })
-    }
-
-     @PatchMapping("/{id}/status")
-     @Operation(
-         summary = "Обновить статус решения",
-         description = "Изменяет статус проверки решения (PENDING, CHECKING, COMPLETED, PLAGIARISM_DETECTED). Только для администраторов."
-     )
-     @ApiResponses(
-         value = [
-             ApiResponse(responseCode = "200", description = "Статус успешно обновлен"),
-             ApiResponse(responseCode = "400", description = "Неверный статус"),
-             ApiResponse(responseCode = "401", description = "Не авторизирован"),
-             ApiResponse(responseCode = "403", description = "Запрещено"),
-             ApiResponse(responseCode = "404", description = "Решение не найдено")
-         ]
-     )
-     fun updateStatus(
-         @Parameter(description = "ID решения", example = "1")
-         @PathVariable id: Long,
-         @Parameter(description = "Новый статус", example = "COMPLETED")
-         @RequestParam status: String,
-         httpRequest: HttpServletRequest
-     ): ResponseEntity<SolutionResponse> {
-         val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
-             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
-         if (payload.role != "ADMIN") {
-             return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-         }
-
-         logger.info { "PATCH /api/solutions/$id/status - администратор ${payload.userId} меняет статус на $status" }
-
-         val solutionStatus = try {
-             SolutionStatus.valueOf(status.uppercase())
-         } catch (e: IllegalArgumentException) {
-             logger.warn { "Неизвестный статус: $status" }
-             throw IllegalArgumentException("Неизвестный статус: $status")
-         }
-         val updated = solutionService.updateStatus(id, solutionStatus)
-         logger.info { "Статус решения $id обновлен на ${updated.status}" }
-         return ResponseEntity.ok(SolutionResponse.fromEntity(updated))
-     }
 
     @DeleteMapping("/{id}")
     @Operation(
@@ -206,9 +105,6 @@ class SolutionController(private val solutionService: SolutionService) {
 
         logger.info { "DELETE /api/solutions/$id - пользователь ${payload.userId}" }
         val solution = solutionService.findById(id)
-        if (solution == null) {
-            return ResponseEntity.notFound().build()
-        }
 
         // Пользователь может удалить только свое решение или администратор может удалить любое
         if (solution.user.id != payload.userId && payload.role != "ADMIN") {
