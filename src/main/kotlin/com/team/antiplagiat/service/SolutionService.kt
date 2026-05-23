@@ -6,6 +6,7 @@ import com.team.antiplagiat.models.Solution
 import com.team.antiplagiat.repository.SolutionRepository
 import com.team.antiplagiat.repository.UserRepository
 import com.team.antiplagiat.repository.ProblemRepository
+import com.team.antiplagiat.repository.ContestRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -20,6 +21,7 @@ class SolutionService(
     private val solutionRepository: SolutionRepository,
     private val userRepository: UserRepository,
     private val problemRepository: ProblemRepository,
+    private val contestRepository: ContestRepository,
     private val properties: SolutionConfig,
     private val meterRegistry: MeterRegistry
 ) {
@@ -72,6 +74,54 @@ class SolutionService(
         }
     }
 
+    @Transactional
+    fun createInContest(
+        ownerId: Long,
+        contestId: Long,
+        problemId: Long,
+        language: String,
+        filePath: String,
+        code: String?
+    ): Solution {
+        logger.info { "Создание решения в контесте: ownerId=$ownerId, contestId=$contestId, problemId=$problemId" }
+
+        val user = userRepository.findById(ownerId)
+            .orElseThrow { ResourceNotFoundException("Пользователь с id=$ownerId не найден") }
+        val contest = contestRepository.findById(contestId)
+            .orElseThrow { ResourceNotFoundException("Контест с id=$contestId не найден") }
+        if (contest.admin.id != ownerId) {
+            throw ResourceNotFoundException("Контест с id=$contestId не найден")
+        }
+
+        val problem = contest.problems.firstOrNull { it.id == problemId }
+            ?: throw ResourceNotFoundException("Задача с id=$problemId не найдена в контесте $contestId")
+
+        val attempts = solutionRepository.countByUserAndContestAndProblem(user, contest, problem)
+        if (attempts >= properties.maxAttempts) {
+            meterRegistry.counter("solution.created.failed.too_many_attempts.total").increment()
+            throw TooManyAttemptsException("Превышен лимит попыток: ${properties.maxAttempts}")
+        }
+
+        if (solutionRepository.existsByUserAndContestAndProblemAndFilePath(user, contest, problem, filePath)) {
+            throw IllegalArgumentException("Решение с таким путем файла уже добавлено в этот контест")
+        }
+
+        val solution = Solution(
+            user = user,
+            contest = contest,
+            problem = problem,
+            language = language,
+            status = SolutionStatus.WAITING,
+            submittedAt = LocalDateTime.now(),
+            filePath = filePath,
+            code = code
+        )
+
+        return solutionRepository.save(solution).also {
+            meterRegistry.counter("solution.created.total").increment()
+        }
+    }
+
     @Transactional(readOnly = true)
     fun findById(id: Long): Solution {
         logger.debug { "Поиск решения по id=$id" }
@@ -102,6 +152,95 @@ class SolutionService(
         val solutions = solutionRepository.findAllByUserId(userId)
         logger.debug { "Найдено решений для пользователя $userId: ${solutions.size}" }
         return solutions
+    }
+
+    @Transactional(readOnly = true)
+    fun findByUserAndContest(userId: Long, contestId: Long): List<Solution> =
+        solutionRepository.findAllByUserIdAndContestId(userId, contestId)
+
+    @Transactional(readOnly = true)
+    fun findOwnedWithRelations(solutionId: Long, ownerId: Long): Solution {
+        val solution = solutionRepository.findByIdWithRelations(solutionId)
+            ?: throw ResourceNotFoundException("Решение с id=$solutionId не найдено")
+        if (solution.user.id != ownerId) {
+            throw ResourceNotFoundException("Решение с id=$solutionId не найдено")
+        }
+        return solution
+    }
+
+    @Transactional(readOnly = true)
+    fun findOwnedInContestProblem(ownerId: Long, contestId: Long, problemId: Long, solutionId: Long): Solution {
+        val solution = findOwnedWithRelations(solutionId, ownerId)
+        if (solution.contest?.id != contestId || solution.problem.id != problemId) {
+            throw ResourceNotFoundException("Решение с id=$solutionId не найдено")
+        }
+        return solution
+    }
+
+    @Transactional
+    fun updateInContestProblem(
+        ownerId: Long,
+        contestId: Long,
+        problemId: Long,
+        solutionId: Long,
+        language: String,
+        filePath: String,
+        code: String
+    ): Solution {
+        val solution = findOwnedInContestProblem(ownerId, contestId, problemId, solutionId)
+        val contest = solution.contest ?: throw ResourceNotFoundException("Контест с id=$contestId не найден")
+
+        if (solution.filePath != filePath &&
+            solutionRepository.existsByUserAndContestAndProblemAndFilePath(solution.user, contest, solution.problem, filePath)
+        ) {
+            throw IllegalArgumentException("Решение с таким путем файла уже добавлено в этот контест")
+        }
+
+        solution.language = language
+        solution.filePath = filePath
+        solution.code = code
+        return solutionRepository.save(solution)
+    }
+
+    @Transactional
+    fun updateOwned(
+        ownerId: Long,
+        solutionId: Long,
+        language: String,
+        filePath: String,
+        code: String
+    ): Solution {
+        val solution = findOwnedWithRelations(solutionId, ownerId)
+        val contest = solution.contest
+
+        if (solution.filePath != filePath) {
+            val duplicateExists = if (contest != null) {
+                solutionRepository.existsByUserAndContestAndProblemAndFilePath(
+                    solution.user,
+                    contest,
+                    solution.problem,
+                    filePath
+                )
+            } else {
+                solutionRepository.existsByUserAndProblemAndFilePath(solution.user, solution.problem, filePath)
+            }
+
+            if (duplicateExists) {
+                throw IllegalArgumentException("Решение с таким путем файла уже добавлено")
+            }
+        }
+
+        solution.language = language
+        solution.filePath = filePath
+        solution.code = code
+        return solutionRepository.save(solution)
+    }
+
+    @Transactional
+    fun deleteInContestProblem(ownerId: Long, contestId: Long, problemId: Long, solutionId: Long) {
+        val solution = findOwnedInContestProblem(ownerId, contestId, problemId, solutionId)
+        solutionRepository.delete(solution)
+        meterRegistry.counter("solution.deleted.total").increment()
     }
 
     @Transactional

@@ -39,82 +39,6 @@ class ProblemControllerTest {
     }
 
     @Test
-    fun `create should return 201 when problem created successfully`() {
-        val request = ProblemRequest(
-            name = "Test Problem",
-            description = "Test description"
-        )
-
-        val problem = Problem(
-            id = 1L,
-            name = "Test Problem",
-            description = "Test description"
-        )
-
-        whenever(problemService.create("Test Problem", "Test description", null)).thenReturn(problem)
-
-        mockMvc.perform(
-            post("/api/problems")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .requestAttr("tokenPayload", TokenPayload(
-                    userId = 1L,
-                    login = "admin",
-                    email = "admin@example.com",
-                    role = "ADMIN"
-                ))
-        )
-            .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.id").value(1))
-            .andExpect(jsonPath("$.name").value("Test Problem"))
-    }
-
-    @Test
-    fun `create should return 401 when no token provided`() {
-        val request = ProblemRequest(
-            name = "Test Problem",
-            description = "Test description"
-        )
-
-        mockMvc.perform(
-            post("/api/problems")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        )
-            .andExpect(status().isUnauthorized)
-    }
-
-    @Test
-    fun `create should allow non admin user`() {
-        val request = ProblemRequest(
-            name = "Test Problem",
-            description = "Test description"
-        )
-        val problem = Problem(
-            id = 2L,
-            name = "Test Problem",
-            description = "Test description"
-        )
-
-        whenever(problemService.create("Test Problem", "Test description", null)).thenReturn(problem)
-
-        mockMvc.perform(
-            post("/api/problems")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .requestAttr("tokenPayload", TokenPayload(
-                    userId = 2L,
-                    login = "user",
-                    email = "user@example.com",
-                    role = "BASIC"
-                ))
-        )
-            .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.id").value(2))
-            .andExpect(jsonPath("$.name").value("Test Problem"))
-    }
-
-    @Test
     fun `get should return problem`() {
         val problem = Problem(
             id = 1L,
@@ -146,27 +70,6 @@ class ProblemControllerTest {
             role = "ADMIN"
         )))
             .andExpect(status().isNotFound)
-    }
-
-    @Test
-    fun `getAll should return list of problems`() {
-        val problems = listOf(
-            Problem(id = 1L, name = "Problem 1", description = "Desc 1"),
-            Problem(id = 2L, name = "Problem 2", description = "Desc 2")
-        )
-
-        whenever(problemService.findAll()).thenReturn(problems)
-
-        mockMvc.perform(get("/api/problems").requestAttr("tokenPayload", TokenPayload(
-            userId = 1L,
-            login = "admin",
-            email = "admin@example.com",
-            role = "ADMIN"
-        )))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(2))
-            .andExpect(jsonPath("$[0].name").value("Problem 1"))
-            .andExpect(jsonPath("$[1].name").value("Problem 2"))
     }
 
     @Test
@@ -255,13 +158,9 @@ class ProblemControllerTest {
         val service = mockk<ProblemService>(relaxed = true)
         val controller = ProblemController(service)
         val request = ProblemRequest("Problem", "Description")
-        every { service.create("Problem", "Description", null) } returns Problem(id = 1L, name = "Problem", description = "Description")
         every { service.update(1L, "Problem", "Description", null) } returns Problem(id = 1L, name = "Problem", description = "Description")
 
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.create(request, requestWith(null)).statusCode)
-        assertEquals(HttpStatus.CREATED, controller.create(request, requestWith(payload(1L, "BASIC"))).statusCode)
         assertEquals(HttpStatus.UNAUTHORIZED, controller.get(1L, requestWith(null)).statusCode)
-        assertEquals(HttpStatus.UNAUTHORIZED, controller.getAll(requestWith(null)).statusCode)
         assertEquals(HttpStatus.UNAUTHORIZED, controller.update(1L, request, requestWith(null)).statusCode)
         assertEquals(HttpStatus.OK, controller.update(1L, request, requestWith(payload(1L, "BASIC"))).statusCode)
         assertEquals(HttpStatus.UNAUTHORIZED, controller.delete(1L, requestWith(null)).statusCode)

@@ -4,6 +4,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.micrometer.core.instrument.MeterRegistry
 import com.team.antiplagiat.config.props.ZipImportProperties
 import com.team.antiplagiat.controller.dto.zipimport.ZipImportResponse
+import com.team.antiplagiat.models.Contest
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.models.Solution
 import com.team.antiplagiat.models.SolutionStatus
@@ -11,7 +12,6 @@ import com.team.antiplagiat.repository.ProblemRepository
 import com.team.antiplagiat.repository.SolutionRepository
 import com.team.antiplagiat.repository.UserRepository
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
 import java.io.ByteArrayOutputStream
 import java.time.LocalDateTime
@@ -36,7 +36,6 @@ class ZipImportService(
         val errors: MutableList<String> = mutableListOf()
     )
 
-    @Transactional
     fun importZip(file: MultipartFile): ZipImportResponse {
 
         val stats = ImportStats()
@@ -84,6 +83,59 @@ class ZipImportService(
             skippedFiles = stats.skippedFiles,
             usersMatched = stats.usersMatched,
             usersNotFound = stats.usersNotFound,
+            errors = stats.errors
+        )
+    }
+
+    fun importZipForContestProblem(
+        file: MultipartFile,
+        owner: com.team.antiplagiat.models.User,
+        contest: Contest,
+        problem: Problem
+    ): ZipImportResponse {
+        val stats = ImportStats()
+        val maxFiles = zipImportProperties.maxFiles
+        val maxEntrySizeBytes = zipImportProperties.maxEntrySize.toBytes()
+        var fileEntriesSeen = 0
+
+        ZipInputStream(file.inputStream).use { zip ->
+            var entry = zip.nextEntry
+
+            while (entry != null) {
+                if (!entry.isDirectory) {
+                    fileEntriesSeen++
+                    if (fileEntriesSeen > maxFiles) {
+                        stats.skippedFiles++
+                        stats.errors += "Превышено максимальное количество файлов в архиве: $maxFiles"
+                        break
+                    }
+
+                    processContestProblemEntry(
+                        zip = zip,
+                        entry = entry,
+                        maxEntrySizeBytes = maxEntrySizeBytes,
+                        owner = owner,
+                        contest = contest,
+                        problem = problem,
+                        stats = stats
+                    )
+                }
+
+                zip.closeEntry()
+                entry = zip.nextEntry
+            }
+        }
+
+        if (stats.solutionsCreated > 0) {
+            meterRegistry.counter("zip.import.total").increment(stats.solutionsCreated.toDouble())
+        }
+
+        return ZipImportResponse(
+            problemsCreated = 0,
+            solutionsCreated = stats.solutionsCreated,
+            skippedFiles = stats.skippedFiles,
+            usersMatched = stats.usersMatched,
+            usersNotFound = 0,
             errors = stats.errors
         )
     }
@@ -190,6 +242,78 @@ class ZipImportService(
         }
     }
 
+    private fun processContestProblemEntry(
+        zip: ZipInputStream,
+        entry: java.util.zip.ZipEntry,
+        maxEntrySizeBytes: Long,
+        owner: com.team.antiplagiat.models.User,
+        contest: Contest,
+        problem: Problem,
+        stats: ImportStats
+    ) {
+        val rawPath = entry.name
+
+        try {
+            val parts = normalizeEntryPath(rawPath)
+            if (parts == null) {
+                stats.skippedFiles++
+                stats.errors += "Опасный или некорректный путь пропущен: $rawPath"
+                return
+            }
+
+            val relativeParts = if (parts.firstOrNull() == "Solutions") parts.drop(1) else parts
+            val fileName = relativeParts.lastOrNull()
+            if (fileName.isNullOrBlank()) {
+                stats.skippedFiles++
+                return
+            }
+
+            if (!isAllowedSourceFile(fileName)) {
+                stats.skippedFiles++
+                stats.errors += "Неподдерживаемое расширение файла пропущено: $fileName"
+                return
+            }
+
+            if (entry.size >= 0 && entry.size > maxEntrySizeBytes) {
+                stats.skippedFiles++
+                stats.errors += "Файл слишком большой и был пропущен: $rawPath (лимит ${zipImportProperties.maxEntrySize.toMegabytes()}MB)"
+                return
+            }
+
+            val content = readEntryText(zip, maxEntrySizeBytes)
+            if (content == null) {
+                stats.skippedFiles++
+                stats.errors += "Файл слишком большой и был пропущен: $rawPath (лимит ${zipImportProperties.maxEntrySize.toMegabytes()}MB)"
+                return
+            }
+
+            val normalizedFilePath = relativeParts.joinToString("/")
+            if (solutionRepository.existsByUserAndContestAndProblemAndFilePath(owner, contest, problem, normalizedFilePath)) {
+                stats.skippedFiles++
+                stats.errors += "Решение уже существует и было пропущено: $normalizedFilePath"
+                return
+            }
+
+            solutionRepository.save(
+                Solution(
+                    user = owner,
+                    contest = contest,
+                    problem = problem,
+                    language = detectLanguage(fileName),
+                    status = SolutionStatus.WAITING,
+                    submittedAt = LocalDateTime.now(),
+                    filePath = normalizedFilePath,
+                    code = content
+                )
+            )
+            stats.usersMatched++
+            stats.solutionsCreated++
+        } catch (ex: Exception) {
+            stats.skippedFiles++
+            stats.errors += "Ошибка при обработке $rawPath: ${ex.message}"
+        }
+    }
+
     private fun normalizeEntryPath(rawPath: String): List<String>? {
         val normalized = rawPath
             .replace('\\', '/')
@@ -254,4 +378,3 @@ class ZipImportService(
         }
     }
 }
-

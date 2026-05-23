@@ -5,6 +5,8 @@ import com.team.antiplagiat.exception.ResourceNotFoundException
 import com.team.antiplagiat.models.Contest
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.repository.ContestRepository
+import com.team.antiplagiat.repository.ProblemRepository
+import com.team.antiplagiat.repository.SolutionRepository
 import com.team.antiplagiat.repository.UserRepository
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
@@ -32,6 +34,12 @@ class ContestServiceTest {
 
     @MockK
     private lateinit var userRepository: UserRepository
+
+    @MockK
+    private lateinit var problemRepository: ProblemRepository
+
+    @MockK
+    private lateinit var solutionRepository: SolutionRepository
 
     @MockK
     private lateinit var config: ContestConfig
@@ -114,7 +122,7 @@ class ContestServiceTest {
     }
 
     @Test
-    fun `create returns null when admin is not an administrator`() {
+    fun `create returns contest when owner is not an administrator`() {
         val user = User(id = 2L, login = "basic", email = "basic@example.com", role = User.Role.BASIC)
         val contest = Contest(
             name = "Wrong Role",
@@ -125,13 +133,15 @@ class ContestServiceTest {
 
         every { config.maxDurationHours } returns 2
         every { userRepository.findById(2L) } returns Optional.of(user)
-        every { meterRegistry.counter("contest.create.failed.invalid_admin") } returns counter
+        every { contestRepository.save(contest) } answers { firstArg() }
+        every { meterRegistry.counter("contest.created") } returns counter
 
         val result = contestService.create(contest)
 
-        assertNull(result)
+        assertEquals("Wrong Role", result?.name)
+        assertEquals(user.id, result?.admin?.id)
         verify(exactly = 1) { userRepository.findById(2L) }
-        verify(exactly = 0) { contestRepository.save(any()) }
+        verify(exactly = 1) { contestRepository.save(contest) }
     }
 
     @Test
@@ -245,12 +255,17 @@ class ContestServiceTest {
      }
 
       @Test
-      fun `delete calls repository deleteById in contest service`() {
+      fun `delete removes contest after cascading contest data`() {
+          val contest = Contest(id = 1L, name = "Contest", admin = User(id = 1L))
           every { contestRepository.existsById(1L) } returns true
-          every { contestRepository.deleteById(1L) } just Runs
+          every { contestRepository.findById(1L) } returns Optional.of(contest)
+          every { solutionRepository.deleteAllByContest(contest) } just Runs
+          every { contestRepository.saveAndFlush(contest) } returns contest
+          every { contestRepository.delete(contest) } just Runs
 
           contestService.delete(1L)
 
-          verify(exactly = 1) { contestRepository.deleteById(1L) }
+          verify(exactly = 1) { solutionRepository.deleteAllByContest(contest) }
+          verify(exactly = 1) { contestRepository.delete(contest) }
       }
 }

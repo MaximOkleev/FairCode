@@ -44,7 +44,8 @@ CREATE TABLE IF NOT EXISTS contests (
 CREATE TABLE IF NOT EXISTS problems (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(200) NOT NULL UNIQUE,
-    description TEXT
+    description TEXT,
+    condition TEXT
 );
 
 CREATE TABLE IF NOT EXISTS contest_problems (
@@ -56,6 +57,7 @@ CREATE TABLE IF NOT EXISTS contest_problems (
 CREATE TABLE IF NOT EXISTS solutions (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    contest_id BIGINT REFERENCES contests(id) ON DELETE CASCADE,
     problem_id BIGINT NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
     language VARCHAR(20) NOT NULL,
     status VARCHAR(20) NOT NULL,
@@ -63,12 +65,19 @@ CREATE TABLE IF NOT EXISTS solutions (
     file_path TEXT NOT NULL,
     code TEXT,
     created_at TIMESTAMP NOT NULL,
-    CONSTRAINT uk_solutions_user_problem_file_path UNIQUE (user_id, problem_id, file_path)
+    CONSTRAINT uk_solutions_user_contest_problem_file_path UNIQUE (user_id, contest_id, problem_id, file_path)
 );
+
+ALTER TABLE IF EXISTS solutions ALTER COLUMN code TYPE TEXT;
 
 CREATE TABLE IF NOT EXISTS plagiarism_check_runs (
     id BIGSERIAL PRIMARY KEY,
     threshold DOUBLE PRECISION NOT NULL,
+    check_type VARCHAR(50),
+    owner_id BIGINT,
+    contest_id BIGINT,
+    problem_id BIGINT,
+    solution_id BIGINT,
     status VARCHAR(20) NOT NULL,
     checked_solutions INT NOT NULL DEFAULT 0,
     compared_pairs INT NOT NULL DEFAULT 0,
@@ -79,6 +88,13 @@ CREATE TABLE IF NOT EXISTS plagiarism_check_runs (
     started_at TIMESTAMP,
     finished_at TIMESTAMP
 );
+
+ALTER TABLE IF EXISTS plagiarism_check_runs ADD COLUMN IF NOT EXISTS check_type VARCHAR(50);
+ALTER TABLE IF EXISTS plagiarism_check_runs ADD COLUMN IF NOT EXISTS owner_id BIGINT;
+ALTER TABLE IF EXISTS plagiarism_check_runs ADD COLUMN IF NOT EXISTS contest_id BIGINT;
+ALTER TABLE IF EXISTS plagiarism_check_runs ADD COLUMN IF NOT EXISTS problem_id BIGINT;
+ALTER TABLE IF EXISTS plagiarism_check_runs ADD COLUMN IF NOT EXISTS solution_id BIGINT;
+UPDATE plagiarism_check_runs SET check_type = 'FULL' WHERE check_type IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_plagiarism_check_runs_status_finished_at
     ON plagiarism_check_runs(status, finished_at);
@@ -99,6 +115,38 @@ CREATE INDEX IF NOT EXISTS idx_plagiarism_matches_check_run ON plagiarism_matche
 CREATE INDEX IF NOT EXISTS idx_plagiarism_matches_first_solution ON plagiarism_matches(first_solution_id);
 CREATE INDEX IF NOT EXISTS idx_plagiarism_matches_second_solution ON plagiarism_matches(second_solution_id);
 CREATE INDEX IF NOT EXISTS idx_plagiarism_matches_detected_at ON plagiarism_matches(detected_at);
+
+CREATE TABLE IF NOT EXISTS ai_plagiarism_check_runs (
+    id BIGSERIAL PRIMARY KEY,
+    owner_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    contest_id BIGINT,
+    solution_id BIGINT,
+    threshold DOUBLE PRECISION NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    checked_solutions INT NOT NULL DEFAULT 0,
+    compared_pairs INT NOT NULL DEFAULT 0,
+    matches INT NOT NULL DEFAULT 0,
+    generated_ai_solutions INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL,
+    finished_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_plagiarism_check_runs_owner_created_at
+    ON ai_plagiarism_check_runs(owner_id, created_at);
+
+CREATE TABLE IF NOT EXISTS ai_plagiarism_matches (
+    id BIGSERIAL PRIMARY KEY,
+    check_run_id BIGINT NOT NULL REFERENCES ai_plagiarism_check_runs(id) ON DELETE CASCADE,
+    solution_id BIGINT NOT NULL REFERENCES solutions(id) ON DELETE CASCADE,
+    ai_solution_id BIGINT NOT NULL REFERENCES ai_generated_solutions(id) ON DELETE CASCADE,
+    similarity DOUBLE PRECISION NOT NULL,
+    threshold DOUBLE PRECISION NOT NULL,
+    detected_at TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_plagiarism_matches_check_run ON ai_plagiarism_matches(check_run_id);
+CREATE INDEX IF NOT EXISTS idx_ai_plagiarism_matches_solution ON ai_plagiarism_matches(solution_id);
+CREATE INDEX IF NOT EXISTS idx_ai_plagiarism_matches_ai_solution ON ai_plagiarism_matches(ai_solution_id);
 
 CREATE TABLE IF NOT EXISTS import_jobs (
     id BIGSERIAL PRIMARY KEY,

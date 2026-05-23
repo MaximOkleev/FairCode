@@ -33,7 +33,6 @@ data class SolutionResponse(
     val userId: Long,
     val problemId: Long,
     val language: String,
-    val status: SolutionStatus,
     val submittedAt: LocalDateTime,
     val filePath: String,
     val code: String?
@@ -44,7 +43,6 @@ data class SolutionResponse(
             userId = solution.user.id,
             problemId = solution.problem.id,
             language = solution.language,
-            status = solution.status,
             submittedAt = solution.submittedAt,
             filePath = solution.filePath,
             code = solution.code

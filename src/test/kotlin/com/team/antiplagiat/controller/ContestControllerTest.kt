@@ -5,7 +5,9 @@ import com.team.antiplagiat.controller.dto.contest.ContestRequest
 import com.team.antiplagiat.models.Contest
 import com.team.antiplagiat.models.User
 import com.team.antiplagiat.service.ContestService
+import com.team.antiplagiat.service.SolutionService
 import com.team.antiplagiat.service.UserService
+import com.team.antiplagiat.service.ZipImportService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
@@ -17,12 +19,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import java.time.LocalDateTime
-import io.mockk.every
-import io.mockk.mockk
-import org.junit.jupiter.api.Assertions.assertEquals
-import jakarta.servlet.http.HttpServletRequest
 import com.team.antiplagiat.config.TokenPayload
-import org.springframework.http.HttpStatus
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -40,6 +37,12 @@ class ContestControllerTest {
     private lateinit var contestService: ContestService
 
     @MockitoBean
+    private lateinit var solutionService: SolutionService
+
+    @MockitoBean
+    private lateinit var zipImportService: ZipImportService
+
+    @MockitoBean
     private lateinit var userService: UserService
 
     private fun setSecurityContext(userId: Long, role: String = "ADMIN") {
@@ -55,7 +58,7 @@ class ContestControllerTest {
     @BeforeEach
     fun setUp() {
         clearSecurityContext()
-        reset(contestService, userService)
+        reset(contestService, solutionService, zipImportService, userService)
     }
 
     @Test
@@ -192,7 +195,7 @@ class ContestControllerTest {
             duration = 120
         )
 
-        whenever(contestService.findById(1L)).thenReturn(contest)
+        whenever(contestService.findByIdAndOwner(1L, 1L)).thenReturn(contest)
 
         mockMvc.perform(get("/api/contests/1").requestAttr("tokenPayload", TokenPayload(
             userId = 1L,
@@ -207,7 +210,7 @@ class ContestControllerTest {
 
     @Test
     fun `getById should return 404 when contest not found`() {
-        whenever(contestService.findById(999L)).thenReturn(null)
+        whenever(contestService.findByIdAndOwner(999L, 1L)).thenReturn(null)
 
         mockMvc.perform(get("/api/contests/999").requestAttr("tokenPayload", TokenPayload(
             userId = 1L,
@@ -227,7 +230,7 @@ class ContestControllerTest {
             Contest(id = 2L, name = "Contest 2", admin = admin, startedAt = now, duration = 180)
         )
 
-        whenever(contestService.findAll()).thenReturn(contests)
+        whenever(contestService.findByAdmin(1L)).thenReturn(contests)
 
         mockMvc.perform(get("/api/contests").requestAttr("tokenPayload", TokenPayload(
             userId = 1L,
@@ -243,44 +246,9 @@ class ContestControllerTest {
 
     @Test
     fun `getAll should return empty list when no contests`() {
-        whenever(contestService.findAll()).thenReturn(emptyList())
-
-        mockMvc.perform(get("/api/contests").requestAttr("tokenPayload", TokenPayload(
-            userId = 1L,
-            login = "admin",
-            email = "admin@example.com",
-            role = "ADMIN"
-        )))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(0))
-    }
-
-    @Test
-    fun `getByAdmin should return contests for specific admin`() {
-        val admin = User(id = 1L, login = "admin", email = "admin@example.com", role = User.Role.ADMIN)
-        val now = LocalDateTime.now()
-        val contests = listOf(
-            Contest(id = 1L, name = "Contest 1", admin = admin, startedAt = now, duration = 120),
-            Contest(id = 2L, name = "Contest 2", admin = admin, startedAt = now, duration = 180)
-        )
-
-        whenever(contestService.findByAdmin(1L)).thenReturn(contests)
-
-        mockMvc.perform(get("/api/contests/by-admin").requestAttr("tokenPayload", TokenPayload(
-            userId = 1L,
-            login = "admin",
-            email = "admin@example.com",
-            role = "ADMIN"
-        )))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(2))
-    }
-
-    @Test
-    fun `getByAdmin should return empty list when admin has no contests`() {
         whenever(contestService.findByAdmin(1L)).thenReturn(emptyList())
 
-        mockMvc.perform(get("/api/contests/by-admin").requestAttr("tokenPayload", TokenPayload(
+        mockMvc.perform(get("/api/contests").requestAttr("tokenPayload", TokenPayload(
             userId = 1L,
             login = "admin",
             email = "admin@example.com",
@@ -303,6 +271,7 @@ class ContestControllerTest {
         )
 
         whenever(contestService.update(eq(1L), eq("Updated Contest"), eq(150L))).thenReturn(updatedContest)
+        whenever(contestService.findByIdAndOwner(1L, 1L)).thenReturn(updatedContest)
 
         // Set security context with ADMIN role
         setSecurityContext(userId = 1L, role = "ADMIN")
@@ -327,6 +296,7 @@ class ContestControllerTest {
     @Test
     fun `update should return 404 when contest not found`() {
         whenever(contestService.update(eq(999L), any(), any())).thenReturn(null)
+        whenever(contestService.findByIdAndOwner(999L, 1L)).thenReturn(null)
 
         mockMvc.perform(
             put("/api/contests/999")
@@ -345,6 +315,7 @@ class ContestControllerTest {
     @Test
     fun `delete should return 204 when contest exists`() {
         doNothing().whenever(contestService).delete(1L)
+        whenever(contestService.findByIdAndOwner(1L, 1L)).thenReturn(Contest(id = 1L, admin = User(id = 1L)))
 
         // Set security context with ADMIN role
         setSecurityContext(userId = 1L, role = "ADMIN")
@@ -361,9 +332,13 @@ class ContestControllerTest {
     }
 
     @Test
-    fun `create should return 403 when user is not admin`() {
+    fun `create should allow basic user`() {
         val request = ContestRequest("Contest", LocalDateTime.now(), 60)
+        val owner = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
+        val contest = Contest(id = 1L, name = "Contest", admin = owner, startedAt = request.startedAt, duration = 60)
 
+        whenever(userService.findById(2L)).thenReturn(owner)
+        whenever(contestService.create(any())).thenReturn(contest)
 
         mockMvc.perform(
             post("/api/contests")
@@ -376,11 +351,13 @@ class ContestControllerTest {
                     role = "BASIC"
                 ))
         )
-            .andExpect(status().isForbidden)
+            .andExpect(status().isCreated)
     }
 
     @Test
-    fun `update should return 403 when user is not admin`() {
+    fun `update should return 404 when basic user is not owner`() {
+        whenever(contestService.findByIdAndOwner(1L, 2L)).thenReturn(null)
+
         mockMvc.perform(
             put("/api/contests/1")
                 .param("name", "Updated")
@@ -392,11 +369,13 @@ class ContestControllerTest {
                     role = "BASIC"
                 ))
         )
-            .andExpect(status().isForbidden)
+            .andExpect(status().isNotFound)
     }
 
     @Test
-    fun `delete should return 403 when user is not admin`() {
+    fun `delete should return 404 when basic user is not owner`() {
+        whenever(contestService.findByIdAndOwner(1L, 2L)).thenReturn(null)
+
         mockMvc.perform(
             delete("/api/contests/1")
                 .requestAttr("tokenPayload", TokenPayload(
@@ -406,7 +385,7 @@ class ContestControllerTest {
                     role = "BASIC"
                 ))
         )
-            .andExpect(status().isForbidden)
+            .andExpect(status().isNotFound)
     }
 
     @Test
@@ -434,12 +413,6 @@ class ContestControllerTest {
     }
 
     @Test
-    fun `getByAdmin should return 401 when token missing`() {
-        mockMvc.perform(get("/api/contests/by-admin"))
-            .andExpect(status().isUnauthorized)
-    }
-
-    @Test
     fun `update should return 401 when token missing`() {
         mockMvc.perform(
             put("/api/contests/1")
@@ -455,4 +428,3 @@ class ContestControllerTest {
             .andExpect(status().isUnauthorized)
     }
 }
-

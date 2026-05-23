@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface PlagiarismCheckRunRepository : JpaRepository<PlagiarismCheckRun, Long> {
     fun findFirstByStatusOrderByFinishedAtDesc(status: PlagiarismCheckRunStatus): PlagiarismCheckRun?
+    fun findAllByOwnerIdOrderByCreatedAtDesc(ownerId: Long): List<PlagiarismCheckRun>
 }

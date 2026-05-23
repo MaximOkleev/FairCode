@@ -1,9 +1,9 @@
 package com.team.antiplagiat.controller
 
 import com.team.antiplagiat.config.TokenPayloadExtractor
+import com.team.antiplagiat.controller.dto.plagiarism.PlagiarismContestProblemCheckResponse
 import com.team.antiplagiat.controller.dto.plagiarism.PlagiarismCheckSummaryResponse
-import com.team.antiplagiat.controller.dto.plagiarism.PlagiarismGroupResponse
-import com.team.antiplagiat.controller.dto.plagiarism.PlagiarismSimpleResultResponse
+import com.team.antiplagiat.controller.dto.plagiarism.PlagiarismComparisonResponse
 import com.team.antiplagiat.service.PlagiarismService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import com.team.antiplagiat.controller.dto.plagiarism.PlagiarismCheckStartResponse
 
 @RestController
 @RequestMapping("/api/plagiarism")
@@ -25,75 +24,79 @@ class PlagiarismController(
     private val plagiarismService: PlagiarismService
 ) {
 
-    @PostMapping("/check")
+    @PostMapping("/compare")
     @Operation(
-        summary = "Start full plagiarism check",
-        description = "Admin endpoint. Starts async plagiarism check between solutions for the same problem and language. Use GET /api/plagiarism/runs/{runId} to check status."
+        summary = "Compare two owned solutions",
+        description = "Compares any two solutions added by the current user."
     )
-    fun runFullCheck(
+    fun compareSolutions(
+        @RequestParam firstSolutionId: Long,
+        @RequestParam secondSolutionId: Long,
         @RequestParam(defaultValue = "0.8") threshold: Double,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<PlagiarismCheckStartResponse> {
+    ): ResponseEntity<PlagiarismComparisonResponse> {
         val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
 
-        if (payload.role != "ADMIN") {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-        }
-
-        return ResponseEntity
-            .status(HttpStatus.ACCEPTED)
-            .body(plagiarismService.startFullCheck(threshold))
+        return ResponseEntity.ok(
+            plagiarismService.compareOwnedSolutions(
+                ownerId = payload.userId,
+                firstSolutionId = firstSolutionId,
+                secondSolutionId = secondSolutionId,
+                threshold = threshold
+            )
+        )
     }
 
-    @GetMapping("/runs/{runId}")
+    @PostMapping("/contests/{contestId}/problems/{problemId}/check")
     @Operation(
-        summary = "Get plagiarism check run",
-        description = "Returns status and summary counters for a plagiarism check run."
+        summary = "Check all solutions for a contest problem",
+        description = "Compares all current user's solutions for one problem inside one contest."
     )
-    fun getRun(
+    fun checkContestProblem(
+        @PathVariable contestId: Long,
+        @PathVariable problemId: Long,
+        @RequestParam(defaultValue = "0.8") threshold: Double,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<PlagiarismContestProblemCheckResponse> {
+        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+        return ResponseEntity.ok(
+            plagiarismService.checkContestProblem(
+                ownerId = payload.userId,
+                contestId = contestId,
+                problemId = problemId,
+                threshold = threshold
+            )
+        )
+    }
+
+    @GetMapping("/history")
+    @Operation(
+        summary = "Get plagiarism check history",
+        description = "Returns saved plagiarism checks started by the current user."
+    )
+    fun getHistory(httpRequest: HttpServletRequest): ResponseEntity<List<PlagiarismCheckSummaryResponse>> {
+        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+        return ResponseEntity.ok(plagiarismService.findHistory(payload.userId))
+    }
+
+    @GetMapping("/history/{runId}/matches")
+    @Operation(
+        summary = "Get saved plagiarism matches for a check",
+        description = "Returns matched pairs saved for a previous plagiarism check."
+    )
+    fun getHistoryMatches(
         @PathVariable runId: Long,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<PlagiarismCheckSummaryResponse> {
+    ): ResponseEntity<List<com.team.antiplagiat.controller.dto.plagiarism.PlagiarismMatchResponse>> {
         val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
 
-        if (payload.role != "ADMIN") {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-        }
-
-        return ResponseEntity.ok(plagiarismService.findRun(runId))
+        return ResponseEntity.ok(plagiarismService.findHistoryMatches(payload.userId, runId))
     }
 
-    @GetMapping("/cheaters")
-    @Operation(
-        summary = "Get plagiarism groups",
-        description = "Returns saved suspicious groups built with DSU from matched solution pairs."
-    )
-    fun getCheaterGroups(httpRequest: HttpServletRequest): ResponseEntity<List<PlagiarismGroupResponse>> {
-        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
-
-        if (payload.role != "ADMIN") {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-        }
-
-        return ResponseEntity.ok(plagiarismService.findCheaterGroups())
-    }
-
-    @GetMapping("/results")
-    @Operation(
-        summary = "Get simple plagiarism results",
-        description = "Returns list of matched pairs from the latest completed plagiarism run. Each item contains problem name, two user logins and similarity in percent (0.0 - 100.0)."
-    )
-    fun getResults(httpRequest: HttpServletRequest): ResponseEntity<List<PlagiarismSimpleResultResponse>> {
-        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
-
-        if (payload.role != "ADMIN") {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-        }
-
-        return ResponseEntity.ok(plagiarismService.findLatestResults())
-    }
 }

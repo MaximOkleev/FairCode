@@ -2,6 +2,7 @@ package com.team.antiplagiat.service
 
 import com.team.antiplagiat.models.Problem
 import com.team.antiplagiat.repository.ProblemRepository
+import com.team.antiplagiat.repository.SolutionRepository
 import com.team.antiplagiat.exception.ResourceNotFoundException
 import io.micrometer.core.instrument.MeterRegistry
 import io.mockk.every
@@ -27,6 +28,9 @@ class ProblemServiceTest {
 
     @MockK
     private lateinit var problemRepository: ProblemRepository
+
+    @MockK
+    private lateinit var solutionRepository: SolutionRepository
 
     @MockK(relaxed = true)
     private lateinit var meterRegistry: MeterRegistry
@@ -206,10 +210,13 @@ class ProblemServiceTest {
     @Test
     fun `delete calls repository for existing id`() {
         every { problemRepository.existsById(1L) } returns true
+        every { problemRepository.findById(1L) } returns Optional.of(problem)
+        every { solutionRepository.deleteAllByProblem(problem) } just Runs
         every { problemRepository.deleteById(1L) } just Runs
 
         problemService.delete(1L)
 
+        verify(exactly = 1) { solutionRepository.deleteAllByProblem(problem) }
         verify(exactly = 1) { problemRepository.deleteById(1L) }
     }
 

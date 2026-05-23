@@ -7,9 +7,9 @@ import java.time.LocalDateTime
 data class SolutionResponse(
     val id: Long,
     val userId: Long,
+    val contestId: Long?,
     val problemId: Long,
     val language: String,
-    val status: SolutionStatus,
     val submittedAt: LocalDateTime,
     val filePath: String,
     val code: String?
@@ -18,9 +18,9 @@ data class SolutionResponse(
         fun fromEntity(solution: Solution): SolutionResponse = SolutionResponse(
             id = solution.id,
             userId = solution.user.id,
+            contestId = solution.contest?.id,
             problemId = solution.problem.id,
             language = solution.language,
-            status = solution.status,
             submittedAt = solution.submittedAt,
             filePath = solution.filePath,
             code = solution.code
@@ -38,4 +38,3 @@ fun SolutionRequest.toEntity(user: com.team.antiplagiat.models.User, problem: co
         filePath = this.filePath,
         code = this.code
     )
-

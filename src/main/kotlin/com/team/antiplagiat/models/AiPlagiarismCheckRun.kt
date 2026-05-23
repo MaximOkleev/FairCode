@@ -11,34 +11,27 @@ import jakarta.persistence.Table
 import java.time.LocalDateTime
 
 @Entity
-@Table(name = "plagiarism_check_runs")
-class PlagiarismCheckRun(
+@Table(name = "ai_plagiarism_check_runs")
+class AiPlagiarismCheckRun(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long = 0,
+
+    @Column(name = "owner_id", nullable = false)
+    var ownerId: Long = 0,
+
+    @Column(name = "contest_id")
+    var contestId: Long? = null,
+
+    @Column(name = "solution_id")
+    var solutionId: Long? = null,
 
     @Column(nullable = false)
     var threshold: Double = 0.0,
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "check_type")
-    var checkType: PlagiarismCheckType = PlagiarismCheckType.FULL,
-
-    @Column(name = "owner_id")
-    var ownerId: Long? = null,
-
-    @Column(name = "contest_id")
-    var contestId: Long? = null,
-
-    @Column(name = "problem_id")
-    var problemId: Long? = null,
-
-    @Column(name = "solution_id")
-    var solutionId: Long? = null,
-
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    var status: PlagiarismCheckRunStatus = PlagiarismCheckRunStatus.PENDING,
+    var status: PlagiarismCheckRunStatus = PlagiarismCheckRunStatus.COMPLETED,
 
     @Column(name = "checked_solutions", nullable = false)
     var checkedSolutions: Int = 0,
@@ -49,17 +42,11 @@ class PlagiarismCheckRun(
     @Column(nullable = false)
     var matches: Int = 0,
 
-    @Column(nullable = false)
-    var groups: Int = 0,
-
-    @Column(name = "error_message")
-    var errorMessage: String? = null,
+    @Column(name = "generated_ai_solutions", nullable = false)
+    var generatedAiSolutions: Int = 0,
 
     @Column(name = "created_at", nullable = false)
     var createdAt: LocalDateTime = LocalDateTime.now(),
-
-    @Column(name = "started_at")
-    var startedAt: LocalDateTime? = null,
 
     @Column(name = "finished_at")
     var finishedAt: LocalDateTime? = null

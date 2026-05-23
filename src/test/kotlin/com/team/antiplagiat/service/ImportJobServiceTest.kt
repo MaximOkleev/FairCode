@@ -95,7 +95,6 @@ class ImportJobServiceTest {
 
         // Assert
         assertEquals(1L, dto.id)
-        assertEquals("COMPLETED", dto.status)
         assertEquals(3, dto.importedSolutions)
         assertEquals(2, dto.usersMatched)
         assertEquals(1, dto.usersNotFound)

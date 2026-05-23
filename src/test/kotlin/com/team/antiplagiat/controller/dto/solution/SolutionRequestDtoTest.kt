@@ -70,7 +70,6 @@ class SolutionRequestDtoTest {
         assertEquals(11L, resp.id)
         assertEquals(3L, resp.userId)
         assertEquals(4L, resp.problemId)
-        assertEquals(SolutionStatus.WAITING, resp.status)
 
         val req = RootSolutionRequest(userId = 3L, problemId = 4L, language = "kotlin", filePath = "/f", code = "c")
         val ent = req.rootToEntity(user, problem)
@@ -105,7 +104,5 @@ class SolutionRequestDtoTest {
         assertEquals(30L, response.id)
         assertEquals(user.id, response.userId)
         assertEquals(problem.id, response.problemId)
-        assertEquals(SolutionStatus.WAITING, response.status)
     }
 }
-

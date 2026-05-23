@@ -3,8 +3,8 @@ package com.team.antiplagiat.controller
 import com.team.antiplagiat.config.TokenPayloadExtractor
 import com.team.antiplagiat.controller.dto.problem.ProblemRequest
 import com.team.antiplagiat.controller.dto.problem.ProblemResponse
-import com.team.antiplagiat.controller.dto.problem.toEntity
 import com.team.antiplagiat.service.ProblemService
+import io.swagger.v3.oas.annotations.Operation
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
@@ -17,23 +17,8 @@ private val logger = KotlinLogging.logger {}
 @RequestMapping("/api/problems")
 class ProblemController(private val problemService: ProblemService) {
 
-    @PostMapping
-    fun create(
-        @RequestBody request: ProblemRequest,
-        httpRequest: HttpServletRequest
-    ): ResponseEntity<ProblemResponse> {
-        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
-
-        logger.info { "POST /api/problems - создание от пользователя ${payload.userId}" }
-
-        val problem = request.toEntity()
-        val saved = problemService.create(problem.name, problem.description, problem.condition)
-        logger.info { "Задача создана: id=${saved.id}" }
-        return ResponseEntity.status(HttpStatus.CREATED).body(ProblemResponse.fromEntity(saved))
-    }
-
     @GetMapping("/{id}")
+    @Operation(summary = "Получить задачу по ID")
     fun get(
         @PathVariable id: Long,
         httpRequest: HttpServletRequest
@@ -47,17 +32,8 @@ class ProblemController(private val problemService: ProblemService) {
         return ResponseEntity.ok(ProblemResponse.fromEntity(problem))
     }
 
-    @GetMapping
-    fun getAll(httpRequest: HttpServletRequest): ResponseEntity<List<ProblemResponse>> {
-        val payload = TokenPayloadExtractor.getTokenPayload(httpRequest)
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
-
-        logger.debug { "GET /api/problems - пользователь ${payload.userId}" }
-        logger.debug { "Получение всех задач" }
-        return ResponseEntity.ok(problemService.findAll().map { ProblemResponse.fromEntity(it) })
-    }
-
     @PutMapping("/{id}")
+    @Operation(summary = "Изменить задачу по ID")
     fun update(
         @PathVariable id: Long,
         @RequestBody request: ProblemRequest,
@@ -75,6 +51,7 @@ class ProblemController(private val problemService: ProblemService) {
     }
 
     @DeleteMapping("/{id}")
+    @Operation(summary = "Удалить задачу по ID вместе с загруженными решениями")
     fun delete(
         @PathVariable id: Long,
         httpRequest: HttpServletRequest

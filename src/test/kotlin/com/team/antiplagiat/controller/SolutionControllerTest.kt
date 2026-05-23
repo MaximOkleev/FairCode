@@ -58,63 +58,6 @@ class SolutionControllerTest {
     }
 
     @Test
-    fun `create should return 201 when solution created successfully`() {
-        val request = SolutionRequest(
-            problemId = 1L,
-            language = "kotlin",
-            filePath = "/test.kt",
-            code = "fun main() {}"
-        )
-
-        val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
-        val problem = Problem(id = 1L, name = "Test Problem", description = "")
-        val solution = Solution(
-            id = 1L,
-            user = user,
-            problem = problem,
-            language = "kotlin",
-            filePath = "/test.kt",
-            code = "fun main() {}",
-            status = SolutionStatus.WAITING
-        )
-
-        whenever(solutionService.create(eq(2L), eq(1L), eq("kotlin"), eq("/test.kt"), eq("fun main() {}")))
-            .thenReturn(solution)
-
-        mockMvc.perform(
-            post("/api/solutions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .requestAttr("tokenPayload", TokenPayload(
-                    userId = 2L,
-                    login = "user",
-                    email = "user@example.com",
-                    role = "BASIC"
-                ))
-        )
-            .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.id").value(1))
-            .andExpect(jsonPath("$.status").value("WAITING"))
-    }
-
-    @Test
-    fun `create should return 401 when no token provided`() {
-        val request = SolutionRequest(
-            problemId = 1L,
-            language = "kotlin",
-            filePath = "/test.kt",
-            code = "fun main() {}"
-        )
-
-        mockMvc.perform(
-            post("/api/solutions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        )
-            .andExpect(status().isUnauthorized)
-    }
-
-    @Test
     fun `get should return solution for owner`() {
         val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
         val problem = Problem(id = 1L, name = "Test Problem", description = "")
@@ -162,96 +105,6 @@ class SolutionControllerTest {
             email = "user3@example.com",
             role = "BASIC"
         )))
-            .andExpect(status().isForbidden)
-    }
-
-    @Test
-    fun `getAll should return user solutions`() {
-        val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
-        val problem = Problem(id = 1L, name = "Test Problem", description = "")
-        val solutions = listOf(
-            Solution(id = 1L, user = user, problem = problem, language = "kotlin", filePath = "/test.kt", code = "", status = SolutionStatus.WAITING)
-        )
-
-        whenever(solutionService.findByUser(2L)).thenReturn(solutions)
-
-        mockMvc.perform(get("/api/solutions").requestAttr("tokenPayload", TokenPayload(
-            userId = 2L,
-            login = "user",
-            email = "user@example.com",
-            role = "BASIC"
-        )))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(1))
-    }
-
-    @Test
-    fun `getByUser should return user solutions`() {
-        val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
-        val problem = Problem(id = 1L, name = "Test Problem", description = "")
-        val solutions = listOf(
-            Solution(id = 1L, user = user, problem = problem, language = "kotlin", filePath = "/test.kt", code = "", status = SolutionStatus.WAITING)
-        )
-
-        whenever(solutionService.findByUser(2L)).thenReturn(solutions)
-
-        mockMvc.perform(get("/api/solutions/user").requestAttr("tokenPayload", TokenPayload(
-            userId = 2L,
-            login = "user",
-            email = "user@example.com",
-            role = "BASIC"
-        )))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(1))
-    }
-
-    @Test
-    fun `updateStatus should return 200 for admin`() {
-        val user = User(id = 2L, login = "user", email = "user@example.com", role = User.Role.BASIC)
-        val problem = Problem(id = 1L, name = "Test Problem", description = "")
-        val updatedSolution = Solution(
-            id = 1L,
-            user = user,
-            problem = problem,
-            language = "kotlin",
-            filePath = "/test.kt",
-            code = "",
-            status = SolutionStatus.COMPLETED
-        )
-
-        whenever(solutionService.updateStatus(eq(1L), eq(SolutionStatus.COMPLETED)))
-            .thenReturn(updatedSolution)
-
-        // Set security context with ADMIN role
-        setSecurityContext(userId = 1L, role = "ADMIN")
-
-        mockMvc.perform(
-            patch("/api/solutions/1/status")
-                .param("status", "COMPLETED")
-                .requestAttr("tokenPayload", TokenPayload(
-                    userId = 1L,
-                    login = "admin",
-                    email = "admin@example.com",
-                    role = "ADMIN"
-                ))
-        )
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.status").value("COMPLETED"))
-    }
-
-    @Test
-    fun `updateStatus should return 403 for non-admin`() {
-
-        mockMvc.perform(
-            patch("/api/solutions/1/status")
-                .param("status", "COMPLETED")
-                .requestAttr("tokenPayload", TokenPayload(
-                    userId = 2L,
-                    login = "user",
-                    email = "user@example.com",
-                    role = "BASIC"
-                ))
-        )
             .andExpect(status().isForbidden)
     }
 
@@ -309,5 +162,4 @@ class SolutionControllerTest {
     }
 
 }
-
 
